@@ -138,6 +138,13 @@
       <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-4 flex flex-col sm:flex-row gap-3">
         <input type="text" id="searchInput" onkeyup="renderTable()" placeholder="Cari kode, nama barang, atau nama PIC..."
           class="flex-1 px-4 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-blue-800">
+        <select id="filterKondisi" onchange="renderTable()"
+          class="px-4 py-2 rounded-lg border border-slate-300 text-sm bg-white focus:outline-none focus:border-blue-800">
+          <option value="ALL">Semua Kondisi</option>
+          <option value="Baik">Baik</option>
+          <option value="Rusak Ringan">Rusak Ringan</option>
+          <option value="Rusak Berat">Rusak Berat</option>
+        </select>
         <select id="filterUnit" onchange="renderTable()"
           class="px-4 py-2 rounded-lg border border-slate-300 text-sm bg-white focus:outline-none focus:border-blue-800">
           <option value="ALL">Semua Unit</option>
@@ -245,7 +252,6 @@
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Kartu 1: Logo per Dashboard Pengguna -->
         <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-5">
           <div>
             <h3 class="font-bold text-slate-800">1. Logo &amp; Identitas Dashboard Pengguna</h3>
@@ -308,7 +314,6 @@
           </div>
         </div>
 
-        <!-- Kartu 2: Pengaturan Format Nomor Inventaris -->
         <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-5">
           <div>
             <h3 class="font-bold text-slate-800">2. Format Nomor Inventaris Otomatis</h3>
@@ -524,7 +529,64 @@
   </div>
 
   <!-- ========================================== -->
-  <!-- MODAL 2: CETAK QR CODE SATUAN / MASSAL A4  -->
+  <!-- MODAL 2: PECAH KONDISI BARANG OTOMATIS     -->
+  <!-- ========================================== -->
+  <div id="modalPecahKondisi" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-bold text-slate-800">✂️ Pecah Kondisi Barang</h3>
+        <button type="button" onclick="document.getElementById('modalPecahKondisi').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+      </div>
+      <p class="text-xs text-slate-500 mb-4">
+        Pisahkan sebagian jumlah barang ke status kondisi berbeda dan terbitkan kode inventaris baru secara otomatis.
+      </p>
+
+      <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-xs space-y-1">
+        <div>Kode Asal: <strong id="pecahKodeAsal" class="font-mono text-blue-950">-</strong></div>
+        <div>Nama Barang: <strong id="pecahNamaBarang" class="text-slate-900">-</strong></div>
+        <div>Kondisi Awal: <strong id="pecahKondisiAsal">-</strong> | Total Awal: <strong id="pecahTotalAwal" class="text-blue-900">0</strong> unit</div>
+      </div>
+
+      <form id="formPecahKondisi" class="space-y-3">
+        <input type="hidden" id="pecahBarangId">
+
+        <div id="rowInputBaik">
+          <label class="block text-xs font-semibold text-emerald-700 mb-1">Jumlah Dipisah ke Kondisi: Baik</label>
+          <input type="number" id="pecahJmlBaik" min="0" value="0" oninput="hitungSisaPecah()"
+            class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-semibold">
+        </div>
+
+        <div id="rowInputRusakRingan">
+          <label class="block text-xs font-semibold text-amber-700 mb-1">Jumlah Dipisah ke Kondisi: Rusak Ringan</label>
+          <input type="number" id="pecahJmlRusakRingan" min="0" value="0" oninput="hitungSisaPecah()"
+            class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-semibold">
+        </div>
+
+        <div id="rowInputRusakBerat">
+          <label class="block text-xs font-semibold text-red-700 mb-1">Jumlah Dipisah ke Kondisi: Rusak Berat</label>
+          <input type="number" id="pecahJmlRusakBerat" min="0" value="0" oninput="hitungSisaPecah()"
+            class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-semibold">
+        </div>
+
+        <div class="p-3 rounded-lg bg-slate-100 border border-slate-200 text-xs flex justify-between items-center">
+          <span>Sisa pada baris asal (<strong id="pecahLabelKondisiAsal">-</strong>):</span>
+          <span id="pecahSisaAsal" class="text-base font-extrabold text-slate-900">0 unit</span>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t">
+          <button type="button" onclick="document.getElementById('modalPecahKondisi').classList.add('hidden')"
+            class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100">Batal</button>
+          <button type="submit" id="btnProsesPecah"
+            class="px-5 py-2 rounded-lg text-sm font-medium bg-amber-600 hover:bg-amber-700 text-white">
+            Proses Pecah Kondisi
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL 3: CETAK QR CODE SATUAN / MASSAL A4  -->
   <!-- ========================================== -->
   <div id="modalCetakA4" class="hidden fixed inset-0 bg-black/60 flex items-start justify-center p-4 z-50 overflow-y-auto">
     <div class="bg-white rounded-2xl max-w-6xl w-full p-6 shadow-2xl my-4">
@@ -588,11 +650,10 @@
   </div>
 
   <!-- ========================================== -->
-  <!-- MODAL 3: EKSPOR LAPORAN RESMI (PDF A4 / EXCEL / CSV) -->
+  <!-- MODAL 4: EKSPOR LAPORAN RESMI (PDF A4 / EXCEL / CSV) -->
   <!-- ========================================== -->
   <div id="modalLaporanA4" class="hidden fixed inset-0 bg-black/60 flex items-start justify-center p-4 z-50 overflow-y-auto">
     <div class="bg-white rounded-2xl max-w-6xl w-full p-6 shadow-2xl my-4">
-      <!-- Panel Kontrol Kop & Pengesahan Laporan -->
       <div class="border-b border-slate-200 pb-4 mb-4">
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
           <div>
@@ -619,7 +680,6 @@
           </div>
         </div>
 
-        <!-- Form Kustomisasi Kop Surat & Pengesahan -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs">
           <div>
             <label class="block font-bold text-slate-600 mb-1">Judul Utama Kop</label>
@@ -673,10 +733,8 @@
         </div>
       </div>
 
-      <!-- Kanvas Pratinjau Dokumen Resmi A4 -->
       <div class="bg-slate-200 p-4 rounded-xl overflow-x-auto flex justify-center">
         <div id="areaCetakLaporanA4" class="bg-white shadow-md text-slate-900" style="width: 210mm; min-height: 297mm; padding: 12mm 14mm;">
-          <!-- Kop Surat Resmi -->
           <div class="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4 gap-3">
             <div id="lapLogoKiriBox" class="w-16 h-16 flex items-center justify-center shrink-0"></div>
             <div class="text-center flex-1 leading-snug">
@@ -687,25 +745,23 @@
             <div id="lapLogoKananBox" class="w-16 h-16 flex items-center justify-center shrink-0"></div>
           </div>
 
-          <!-- Info Ruang & Gedung -->
           <div class="grid grid-cols-2 gap-2 text-xs font-bold mb-3">
             <div>
               <div>RUANG &nbsp;&nbsp;&nbsp;: <span id="prevLapRuang" class="font-semibold"></span></div>
               <div class="mt-1">GEDUNG : <span id="prevLapGedung" class="font-semibold"></span></div>
             </div>
             <div class="text-right text-[11px] font-normal text-slate-600 self-end">
-              Dicetak melalui SIMA • Total Jenis Barang: <strong id="prevLapJumlahJenis">0</strong>
+              Dicetak melalui SIMA • Total Baris Aset: <strong id="prevLapJumlahJenis">0</strong>
             </div>
           </div>
 
-          <!-- Tabel Daftar Aset Resmi -->
           <table class="w-full border-collapse border border-slate-900 text-[11px]">
             <thead>
               <tr class="bg-blue-900 text-white text-center font-bold">
                 <th rowspan="2" class="border border-slate-900 px-1.5 py-1.5 w-8">No</th>
                 <th rowspan="2" class="border border-slate-900 px-2 py-1.5 w-28">Kode Inventaris</th>
                 <th rowspan="2" class="border border-slate-900 px-2 py-1.5">Nama Aset (Barang)</th>
-                <th rowspan="2" class="border border-slate-900 px-1.5 py-1.5 w-16">Tahun</th>
+                <th rowspan="2" class="border border-slate-900 px-1.5 py-1.5 w-14">Tahun</th>
                 <th rowspan="2" class="border border-slate-900 px-1.5 py-1.5 w-14">Jumlah</th>
                 <th colspan="2" class="border border-slate-900 px-1.5 py-1">KONDISI</th>
                 <th rowspan="2" class="border border-slate-900 px-2 py-1.5 w-24">PIC</th>
@@ -720,7 +776,6 @@
             <tfoot id="tfootLaporanA4"></tfoot>
           </table>
 
-          <!-- Blok Tanda Tangan / Pengesahan -->
           <div class="mt-8 flex justify-end">
             <div class="w-64 text-xs text-left leading-relaxed">
               <div id="prevLapTanggalTtd"></div>
@@ -735,14 +790,14 @@
   </div>
 
   <!-- ========================================== -->
-  <!-- MODAL 4: FORM PINJAM BARANG                -->
+  <!-- MODAL 5: FORM PINJAM BARANG                -->
   <!-- ========================================== -->
   <div id="modalPinjam" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
     <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
       <h3 class="text-lg font-bold text-slate-800 mb-4">Form Peminjaman Barang</h3>
       <form id="formPinjam" class="space-y-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Pilih Barang Tersedia</label>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Pilih Barang Kondisi Baik Tersedia</label>
           <select id="pilihBarangPinjam" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white"></select>
         </div>
         <div class="grid grid-cols-2 gap-3">
@@ -785,6 +840,7 @@
     let selectedFileUntukUpload = null;
     let tempLogoBase64 = null;
     let tempLogoInstitusiBase64 = null;
+    let itemSedangDipecah = null;
 
     function formatWaktu(isoString) {
       if (!isoString) return '-';
@@ -1019,7 +1075,7 @@
             <p class="text-2xl font-bold ${numColor} mt-1">${total}</p>
           </div>
           <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <p class="text-xs font-semibold text-slate-400 uppercase">Jenis Barang ${unitName}</p>
+            <p class="text-xs font-semibold text-slate-400 uppercase">Baris Data ${unitName}</p>
             <p class="text-2xl font-bold text-slate-800 mt-1">${items.length}</p>
           </div>
           <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
@@ -1061,12 +1117,14 @@
     function getFilteredInventaris() {
       const keyword = document.getElementById('searchInput').value.toLowerCase();
       const unitFilter = document.getElementById('filterUnit').value;
+      const kondisiFilter = document.getElementById('filterKondisi').value;
       return allInventaris.filter(item => {
         const matchSearch = item.nama_barang.toLowerCase().includes(keyword) ||
           item.kode_barang.toLowerCase().includes(keyword) ||
           (item.nama_pic && item.nama_pic.toLowerCase().includes(keyword));
         const matchUnit = unitFilter === 'ALL' || item.unit_pemilik === unitFilter;
-        return matchSearch && matchUnit;
+        const matchKondisi = kondisiFilter === 'ALL' || item.kondisi === kondisiFilter;
+        return matchSearch && matchUnit && matchKondisi;
       });
     }
 
@@ -1084,13 +1142,21 @@
           (currentProfile.role === 'lpmi' && item.unit_pemilik === 'LPMI') ||
           (currentProfile.role === 'rektorat' && item.unit_pemilik === 'Rektorat');
 
-        const badgeKondisi = item.kondisi === 'Baik' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700';
+        const badgeKondisi = item.kondisi === 'Baik'
+          ? 'bg-emerald-100 text-emerald-700'
+          : (item.kondisi === 'Rusak Ringan' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-700');
+
         const badgeUnit = item.unit_pemilik === 'LPMI' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800';
         const isChecked = selectedItemIds.has(item.id) ? 'checked' : '';
 
         const fotoHtml = item.foto_url
           ? `<a href="${item.foto_url}" target="_blank"><img src="${item.foto_url}" class="w-12 h-12 object-cover rounded-lg border border-slate-200 hover:scale-105 transition"></a>`
           : `<div class="w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] text-slate-400">No Foto</div>`;
+
+        const btnPecahHtml = (canEdit && item.jumlah > 1)
+          ? `<button type="button" onclick='bukaModalPecahKondisi(${JSON.stringify(item)})' title="Pecah sebagian unit ke kondisi lain"
+               class="text-amber-700 hover:underline text-xs font-semibold">✂️ Pecah</button>`
+          : '';
 
         return `
           <tr class="hover:bg-slate-50">
@@ -1120,8 +1186,9 @@
               <div class="text-[11px] text-slate-400 mt-0.5">Unggah: ${formatWaktu(item.created_at)}</div>
               <div class="text-[11px] text-slate-400">Oleh: ${item.nama_penginput || '-'}</div>
             </td>
-            <td class="p-4 text-right space-x-2">
+            <td class="p-4 text-right space-x-2 whitespace-nowrap">
               ${canEdit ? `
+                ${btnPecahHtml}
                 <button type="button" onclick='editBarang(${JSON.stringify(item)})' class="text-blue-600 hover:underline text-xs font-medium">Edit</button>
                 <button type="button" onclick="hapusBarang('${item.id}', '${item.kode_barang}', '${item.nama_barang}')" class="text-red-600 hover:underline text-xs font-medium">Hapus</button>
               ` : '<span class="text-xs text-slate-400 italic">Lihat Saja</span>'}
@@ -1130,6 +1197,156 @@
         `;
       }).join('');
     }
+
+    // ==========================================
+    // FITUR PECAH KONDISI BARANG OTOMATIS
+    // ==========================================
+    function bukaModalPecahKondisi(item) {
+      itemSedangDipecah = item;
+      document.getElementById('pecahBarangId').value = item.id;
+      document.getElementById('pecahKodeAsal').textContent = item.kode_barang;
+      document.getElementById('pecahNamaBarang').textContent = item.nama_barang;
+      document.getElementById('pecahKondisiAsal').textContent = item.kondisi;
+      document.getElementById('pecahLabelKondisiAsal').textContent = item.kondisi;
+      document.getElementById('pecahTotalAwal').textContent = item.jumlah;
+
+      document.getElementById('pecahJmlBaik').value = 0;
+      document.getElementById('pecahJmlRusakRingan').value = 0;
+      document.getElementById('pecahJmlRusakBerat').value = 0;
+
+      // Sembunyikan input untuk kondisi yang sama dengan kondisi asal
+      document.getElementById('rowInputBaik').classList.toggle('hidden', item.kondisi === 'Baik');
+      document.getElementById('rowInputRusakRingan').classList.toggle('hidden', item.kondisi === 'Rusak Ringan');
+      document.getElementById('rowInputRusakBerat').classList.toggle('hidden', item.kondisi === 'Rusak Berat');
+
+      hitungSisaPecah();
+      document.getElementById('modalPecahKondisi').classList.remove('hidden');
+    }
+
+    function hitungSisaPecah() {
+      if (!itemSedangDipecah) return;
+      const b = parseInt(document.getElementById('pecahJmlBaik').value) || 0;
+      const rr = parseInt(document.getElementById('pecahJmlRusakRingan').value) || 0;
+      const rb = parseInt(document.getElementById('pecahJmlRusakBerat').value) || 0;
+      const sisa = itemSedangDipecah.jumlah - (b + rr + rb);
+
+      const sisaEl = document.getElementById('pecahSisaAsal');
+      sisaEl.textContent = `${sisa} unit`;
+      if (sisa < 1) {
+        sisaEl.className = 'text-base font-extrabold text-red-600';
+      } else {
+        sisaEl.className = 'text-base font-extrabold text-slate-900';
+      }
+    }
+
+    function buatKodeBerikutnyaDariPrefix(prefixKode, daftarKodeTerpakai) {
+      const prefixCfg = getStoragePrefix();
+      const digitUrut = parseInt(localStorage.getItem(prefixCfg + '_digit_urut') || '3');
+      let maxUrut = 0;
+
+      daftarKodeTerpakai.forEach(kode => {
+        if (kode.startsWith(prefixKode)) {
+          const parts = kode.split('-');
+          const num = parseInt(parts[parts.length - 1]);
+          if (!isNaN(num) && num > maxUrut) maxUrut = num;
+        }
+      });
+
+      const nextKode = `${prefixKode}${String(maxUrut + 1).padStart(digitUrut, '0')}`;
+      daftarKodeTerpakai.push(nextKode);
+      return nextKode;
+    }
+
+    document.getElementById('formPecahKondisi').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!itemSedangDipecah) return;
+
+      const b = parseInt(document.getElementById('pecahJmlBaik').value) || 0;
+      const rr = parseInt(document.getElementById('pecahJmlRusakRingan').value) || 0;
+      const rb = parseInt(document.getElementById('pecahJmlRusakBerat').value) || 0;
+      const totalPindah = b + rr + rb;
+      const sisa = itemSedangDipecah.jumlah - totalPindah;
+
+      if (totalPindah <= 0) {
+        alert('Masukkan minimal 1 unit yang akan dipindahkan ke kondisi berbeda.');
+        return;
+      }
+      if (sisa < 1) {
+        alert('Sisakan minimal 1 unit pada baris barang asal (atau gunakan tombol Edit jika seluruh barang berubah kondisi).');
+        return;
+      }
+
+      const btn = document.getElementById('btnProsesPecah');
+      btn.disabled = true;
+      btn.textContent = 'Memproses...';
+
+      // Ambil bagian prefix dari kode asal (misal "FU-LPMI-26-001" -> "FU-LPMI-26-")
+      const partsAsal = itemSedangDipecah.kode_barang.split('-');
+      const prefixKode = partsAsal.length > 1
+        ? partsAsal.slice(0, -1).join('-') + '-'
+        : itemSedangDipecah.kode_barang + '-';
+
+      const daftarKodeTerpakai = allInventaris.map(i => i.kode_barang);
+      const barisBaru = [];
+
+      const daftarPecahan = [
+        { kondisi: 'Baik', jumlah: b },
+        { kondisi: 'Rusak Ringan', jumlah: rr },
+        { kondisi: 'Rusak Berat', jumlah: rb }
+      ];
+
+      daftarPecahan.forEach(p => {
+        if (p.jumlah > 0) {
+          const kodeBaru = buatKodeBerikutnyaDariPrefix(prefixKode, daftarKodeTerpakai);
+          barisBaru.push({
+            kode_barang: kodeBaru,
+            nama_barang: itemSedangDipecah.nama_barang,
+            nama_pic: itemSedangDipecah.nama_pic,
+            kategori: itemSedangDipecah.kategori,
+            jumlah: p.jumlah,
+            kondisi: p.kondisi,
+            unit_pemilik: itemSedangDipecah.unit_pemilik,
+            tanggal_masuk: itemSedangDipecah.tanggal_masuk,
+            keterangan: itemSedangDipecah.keterangan
+              ? `${itemSedangDipecah.keterangan} (Pecahan dari ${itemSedangDipecah.kode_barang})`
+              : `Pecahan dari ${itemSedangDipecah.kode_barang}`,
+            foto_url: itemSedangDipecah.foto_url || null,
+            diinput_oleh: currentUser.id,
+            nama_penginput: currentProfile.nama_lengkap,
+            updated_at: new Date()
+          });
+        }
+      });
+
+      const { error: errUpdate } = await sb
+        .from('inventaris')
+        .update({ jumlah: sisa, updated_at: new Date() })
+        .eq('id', itemSedangDipecah.id);
+
+      if (errUpdate) {
+        alert('Gagal memperbarui jumlah barang asal: ' + errUpdate.message);
+        btn.disabled = false;
+        btn.textContent = 'Proses Pecah Kondisi';
+        return;
+      }
+
+      const { error: errInsert } = await sb.from('inventaris').insert(barisBaru);
+      if (errInsert) {
+        alert('Gagal membuat baris kondisi baru: ' + errInsert.message);
+      } else {
+        const ringkasan = barisBaru.map(x => `${x.jumlah} unit ${x.kondisi} [${x.kode_barang}]`).join(', ');
+        await catatKegiatan(
+          'Pecah Kondisi Barang',
+          `Memecah ${itemSedangDipecah.kode_barang} (${itemSedangDipecah.nama_barang}): sisa ${sisa} ${itemSedangDipecah.kondisi}, terbit ${ringkasan}`
+        );
+        document.getElementById('modalPecahKondisi').classList.add('hidden');
+        await loadInventaris();
+        await loadKegiatan();
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Proses Pecah Kondisi';
+    });
 
     // ==========================================
     // EKSPOR LAPORAN RESMI (PDF A4 / EXCEL / CSV)
@@ -1191,6 +1408,10 @@
         if (isBaik) totalBaik += item.jumlah;
         else totalRusak += item.jumlah;
 
+        const ketDisplay = item.keterangan
+          ? (isBaik ? item.keterangan : `${item.kondisi} — ${item.keterangan}`)
+          : (!isBaik ? item.kondisi : '');
+
         return `
           <tr>
             <td class="border border-slate-900 px-1.5 py-1 text-center">${index + 1}</td>
@@ -1201,7 +1422,7 @@
             <td class="border border-slate-900 px-1.5 py-1 text-center font-bold text-emerald-800">${isBaik ? '✓' : ''}</td>
             <td class="border border-slate-900 px-1.5 py-1 text-center font-bold text-red-700">${!isBaik ? '✓' : ''}</td>
             <td class="border border-slate-900 px-2 py-1 text-[10px]">${item.nama_pic || '-'}</td>
-            <td class="border border-slate-900 px-2 py-1 text-[10px]">${item.keterangan || (!isBaik ? item.kondisi : '')}</td>
+            <td class="border border-slate-900 px-2 py-1 text-[10px]">${ketDisplay}</td>
           </tr>
         `;
       }).join('');
@@ -1238,14 +1459,17 @@
         ['RUANG :', ruang],
         ['GEDUNG :', gedung],
         [],
-        ['No', 'Kode Inventaris', 'Nama Aset (Barang)', 'Kategori', 'Tahun Pengadaan', 'Jumlah (Unit)', 'Kondisi Baik', 'Kondisi Rusak', 'Unit Pemilik', 'Nama PIC', 'Keterangan']
+        ['No', 'Kode Inventaris', 'Nama Aset (Barang)', 'Kategori', 'Tahun Pengadaan', 'Jumlah (Unit)', 'Kondisi Baik', 'Kondisi Rusak', 'Status Detail', 'Unit Pemilik', 'Nama PIC', 'Keterangan']
       ];
 
-      let totalUnit = 0;
+      let totalUnit = 0, totalBaik = 0, totalRusak = 0;
       data.forEach((item, idx) => {
         const tahun = item.tanggal_masuk ? item.tanggal_masuk.split('-')[0] : '-';
         const isBaik = item.kondisi === 'Baik';
         totalUnit += item.jumlah;
+        if (isBaik) totalBaik += item.jumlah;
+        else totalRusak += item.jumlah;
+
         rows.push([
           idx + 1,
           item.kode_barang,
@@ -1255,24 +1479,25 @@
           item.jumlah,
           isBaik ? '✓' : '',
           !isBaik ? '✓' : '',
+          item.kondisi,
           item.unit_pemilik,
           item.nama_pic || '-',
-          item.keterangan || (!isBaik ? item.kondisi : '')
+          item.keterangan || ''
         ]);
       });
 
-      rows.push(['', '', 'TOTAL KESELURUHAN', '', '', totalUnit, '', '', '', '', '']);
+      rows.push(['', '', 'TOTAL KESELURUHAN', '', '', totalUnit, totalBaik, totalRusak, '', '', '', '']);
       rows.push([]);
-      rows.push(['', '', '', '', '', '', '', '', document.getElementById('lapTanggalTtd').value]);
-      rows.push(['', '', '', '', '', '', '', '', document.getElementById('lapJabatanTtd').value]);
+      rows.push(['', '', '', '', '', '', '', '', '', document.getElementById('lapTanggalTtd').value]);
+      rows.push(['', '', '', '', '', '', '', '', '', document.getElementById('lapJabatanTtd').value]);
       rows.push([]);
       rows.push([]);
-      rows.push(['', '', '', '', '', '', '', '', document.getElementById('lapNamaTtd').value]);
+      rows.push(['', '', '', '', '', '', '', '', '', document.getElementById('lapNamaTtd').value]);
 
       const ws = XLSX.utils.aoa_to_sheet(rows);
       ws['!cols'] = [
         { wch: 5 }, { wch: 20 }, { wch: 30 }, { wch: 16 }, { wch: 16 },
-        { wch: 14 }, { wch: 13 }, { wch: 13 }, { wch: 14 }, { wch: 22 }, { wch: 28 }
+        { wch: 14 }, { wch: 13 }, { wch: 13 }, { wch: 16 }, { wch: 14 }, { wch: 22 }, { wch: 28 }
       ];
 
       const wb = XLSX.utils.book_new();
@@ -1520,7 +1745,7 @@
 
         grid.appendChild(card);
 
-        const qrPayload = `KODE: ${item.kode_barang} | BARANG: ${item.nama_barang} | UNIT: ${item.unit_pemilik} | PIC: ${item.nama_pic || '-'}`;
+        const qrPayload = `KODE: ${item.kode_barang} | BARANG: ${item.nama_barang} | UNIT: ${item.unit_pemilik} | KONDISI: ${item.kondisi} | PIC: ${item.nama_pic || '-'}`;
         new QRCode(document.getElementById(qrContainerId), {
           text: qrPayload,
           width: qrPx,
@@ -1721,17 +1946,17 @@
 
     function openModalPinjam() {
       const select = document.getElementById('pilihBarangPinjam');
-      const tersedia = allInventaris.filter(i => i.jumlah > 0 && (
+      const tersedia = allInventaris.filter(i => i.jumlah > 0 && i.kondisi === 'Baik' && (
         currentProfile.role === 'admin' || i.unit_pemilik.toLowerCase() === currentProfile.role
       ));
 
       if (tersedia.length === 0) {
-        alert('Tidak ada stok barang tersedia untuk dipinjam pada unit Anda.');
+        alert('Tidak ada stok barang berstatus Baik yang tersedia untuk dipinjam pada unit Anda.');
         return;
       }
 
       select.innerHTML = tersedia.map(i =>
-        `<option value="${i.id}">${i.kode_barang} - ${i.nama_barang} (Stok: ${i.jumlah})</option>`
+        `<option value="${i.id}">${i.kode_barang} - ${i.nama_barang} (Stok Baik: ${i.jumlah})</option>`
       ).join('');
       document.getElementById('formPinjam').reset();
       document.getElementById('modalPinjam').classList.remove('hidden');

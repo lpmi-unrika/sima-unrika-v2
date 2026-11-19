@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - SIMA UNRIKA</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-slate-100 min-h-screen flex flex-col md:flex-row font-sans text-slate-800">
+
+  <!-- Sidebar Navigasi -->
+  <aside class="w-full md:w-64 bg-blue-950 text-white flex flex-col justify-between shrink-0">
+    <div>
+      <div class="p-6 border-b border-blue-900">
+        <h1 class="text-xl font-bold tracking-wide">SIMA UNRIKA</h1>
+        <p class="text-xs text-blue-300 mt-1">Sistem Informasi Manajemen Administrasi</p>
+      </div>
+
+      <nav class="p-4 space-y-2">
+        <button type="button" onclick="switchTab('inventaris')" id="nav-inventaris"
+          class="w-full text-left px-4 py-2.5 rounded-lg bg-blue-800 text-white font-medium flex items-center gap-3">
+          <span>📦</span> Data Inventaris
+        </button>
+
+        <button type="button" onclick="switchTab('pengguna')" id="nav-pengguna"
+          class="hidden w-full text-left px-4 py-2.5 rounded-lg text-blue-200 hover:bg-blue-900 font-medium flex items-center gap-3">
+          <span>👥</span> Manajemen Pengguna
+        </button>
+      </nav>
+    </div>
+
+    <div class="p-4 border-t border-blue-900">
+      <div class="mb-3 px-2">
+        <p id="userNameDisplay" class="text-sm font-semibold truncate">Memuat...</p>
+        <span id="userRoleBadge" class="inline-block mt-1 text-xs px-2 py-0.5 rounded bg-blue-800 text-blue-200 uppercase font-semibold">...</span>
+      </div>
+      <button type="button" onclick="logout()"
+        class="w-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-2 rounded-lg transition">
+        Keluar (Logout)
+      </button>
+    </div>
+  </aside>
+
+  <!-- Konten Utama -->
+  <main class="flex-1 p-6 md:p-8 overflow-y-auto">
+
+    <!-- TAB 1: DATA INVENTARIS -->
+    <section id="section-inventaris">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 class="text-2xl font-bold text-slate-800">Inventaris Barang Kantor</h2>
+          <p class="text-sm text-slate-500">Data aset terpadu unit LPMI dan Rektorat</p>
+        </div>
+        <button type="button" onclick="openModalBarang()"
+          class="bg-blue-900 hover:bg-blue-800 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition">
+          + Tambah Barang Baru
+        </button>
+      </div>
+
+      <!-- Kartu Statistik -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-xs font-semibold text-slate-400 uppercase">Total Semua Barang</p>
+          <p id="stat-total" class="text-2xl font-bold text-slate-800 mt-1">0</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-xs font-semibold text-blue-600 uppercase">Inventaris LPMI</p>
+          <p id="stat-lpmi" class="text-2xl font-bold text-blue-900 mt-1">0</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-xs font-semibold text-emerald-600 uppercase">Inventaris Rektorat</p>
+          <p id="stat-rektorat" class="text-2xl font-bold text-emerald-700 mt-1">0</p>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-xs font-semibold text-red-500 uppercase">Perlu Perbaikan (Rusak)</p>
+          <p id="stat-rusak" class="text-2xl font-bold text-red-600 mt-1">0</p>
+        </div>
+      </div>
+
+      <!-- Filter & Pencarian -->
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-4 flex flex-col sm:flex-row gap-3">
+        <input type="text" id="searchInput" onkeyup="renderTable()" placeholder="Cari kode atau nama barang..."
+          class="flex-1 px-4 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-blue-800">
+        <select id="filterUnit" onchange="renderTable()"
+          class="px-4 py-2 rounded-lg border border-slate-300 text-sm bg-white focus:outline-none focus:border-blue-800">
+          <option value="ALL">Semua Unit (LPMI &amp; Rektorat)</option>
+          <option value="LPMI">Unit LPMI</option>
+          <option value="Rektorat">Unit Rektorat</option>
+        </select>
+      </div>
+
+      <!-- Tabel Inventaris -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase">
+              <th class="p-4">Kode</th>
+              <th class="p-4">Nama Barang</th>
+              <th class="p-4">Kategori</th>
+              <th class="p-4">Jumlah</th>
+              <th class="p-4">Kondisi</th>
+              <th class="p-4">Unit</th>
+              <th class="p-4">Diinput Oleh</th>
+              <th class="p-4 text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="tabelInventaris" class="divide-y divide-slate-100 text-sm text-slate-700">
+            <tr><td colspan="8" class="p-6 text-center text-slate-400">Memuat data inventaris...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB 2: MANAJEMEN PENGGUNA (KHUSUS ADMIN) -->
+    <section id="section-pengguna" class="hidden">
+      <div class="mb-6">
+        <h2 class="text-2xl font-bold text-slate-800">Manajemen Akun Pengguna</h2>
+        <p class="text-sm text-slate-500">Buat akun baru dan kelola hak akses staf LPMI maupun Rektorat</p>
+      </div>
+
+      <!-- Form Buat Akun Baru -->
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-6">
+        <h3 class="font-bold text-slate-800 mb-4">Daftarkan Akun Staf Baru</h3>
+        <form id="formUserBaru" class="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <input type="text" id="newNama" required placeholder="Nama Lengkap Staf"
+            class="px-3 py-2 rounded-lg border border-slate-300 text-sm">
+          <input type="email" id="newEmail" required placeholder="Email (mis: staf@unrika.ac.id)"
+            class="px-3 py-2 rounded-lg border border-slate-300 text-sm">
+          <input type="password" id="newPassword" required minlength="6" placeholder="Password (min 6 karakter)"
+            class="px-3 py-2 rounded-lg border border-slate-300 text-sm">
+          <select id="newRole" class="px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white">
+            <option value="lpmi">Staf LPMI</option>
+            <option value="rektorat">Staf Rektorat</option>
+            <option value="admin">Admin Utama</option>
+          </select>
+          <button type="submit" id="btnBuatUser"
+            class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-4 rounded-lg text-sm transition">
+            + Buat Akun
+          </button>
+        </form>
+      </div>
+
+      <!-- Tabel Daftar Pengguna -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase">
+              <th class="p-4">Nama Lengkap</th>
+              <th class="p-4">Email</th>
+              <th class="p-4">Role / Unit</th>
+              <th class="p-4">Status Akun</th>
+              <th class="p-4 text-right">Pengaturan</th>
+            </tr>
+          </thead>
+          <tbody id="tabelPengguna" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal Form Tambah/Edit Barang -->
+  <div id="modalBarang" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl">
+      <h3 id="modalTitle" class="text-lg font-bold text-slate-800 mb-4">Tambah Barang Inventaris</h3>
+      <form id="formBarang" class="space-y-4">
+        <input type="hidden" id="barangId">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Kode Barang</label>
+            <input type="text" id="kodeBarang" required placeholder="INV-LPMI-001"
+              class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Unit Pemilik</label>
+            <select id="unitPemilik" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white">
+              <option value="LPMI">LPMI</option>
+              <option value="Rektorat">Rektorat</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Barang</label>
+          <input type="text" id="namaBarang" required placeholder="Laptop Asus Vivobook / Printer Epson"
+            class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
+        </div>
+
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Kategori</label>
+            <input type="text" id="kategoriBarang" required placeholder="Elektronik / ATK"
+              class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Jumlah</label>
+            <input type="number" id="jumlahBarang" required min="1" value="1"
+              class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Kondisi</label>
+            <select id="kondisiBarang" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white">
+              <option value="Baik">Baik</option>
+              <option value="Rusak Ringan">Rusak Ringan</option>
+              <option value="Rusak Berat">Rusak Berat</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Keterangan / Lokasi Ruangan</label>
+          <input type="text" id="keteranganBarang" placeholder="Ruang Ketua LPMI / Lemari Arsip"
+            class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
+        </div>
+
+        <div class="flex justify-end gap-3 pt-4 border-t">
+          <button type="button" onclick="closeModalBarang()"
+            class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100">Batal</button>
+          <button type="submit"
+            class="px-5 py-2 rounded-lg text-sm font-medium bg-blue-900 hover:bg-blue-800 text-white">Simpan Data</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://prbxzgplgphvnwgnfhon.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByYnh6Z3BsZ3Bodm53Z25maG9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwODEyOTMsImV4cCI6MjExMDY1NzI5M30.v3eDXKjtSaH0Ypt2zx-lF_tgsWVmhRWQ3AGRRX8vYMI';
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let currentUser = null;
+    let currentProfile = null;
+    let allInventaris = [];
+
+    // 1. Cek Sesi Login & Role Pengguna
+    async function initDashboard() {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) {
+        window.location.href = 'index.html';
+        return;
+      }
+
+      currentUser = session.user;
+      const { data: profile, error } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+
+      if (error || !profile) {
+        alert('Gagal memuat profil pengguna.');
+        logout();
+        return;
+      }
+
+      currentProfile = profile;
+      document.getElementById('userNameDisplay').textContent = profile.nama_lengkap;
+      document.getElementById('userRoleBadge').textContent = 'ROLE: ' + profile.role;
+
+      // Kunci pilihan unit jika bukan Admin
+      const unitSelect = document.getElementById('unitPemilik');
+      if (profile.role === 'lpmi') {
+        unitSelect.value = 'LPMI';
+        unitSelect.disabled = true;
+      } else if (profile.role === 'rektorat') {
+        unitSelect.value = 'Rektorat';
+        unitSelect.disabled = true;
+      } else if (profile.role === 'admin') {
+        unitSelect.disabled = false;
+        document.getElementById('nav-pengguna').classList.remove('hidden');
+        loadUsers();
+      }
+
+      loadInventaris();
+    }
+
+    // 2. Muat Data Inventaris
+    async function loadInventaris() {
+      const { data, error } = await sb.from('inventaris').select('*').order('created_at', { ascending: false });
+      if (!error) {
+        allInventaris = data;
+        updateStats();
+        renderTable();
+      }
+    }
+
+    function updateStats() {
+      let total = 0, lpmi = 0, rektorat = 0, rusak = 0;
+      allInventaris.forEach(item => {
+        total += item.jumlah;
+        if (item.unit_pemilik === 'LPMI') lpmi += item.jumlah;
+        if (item.unit_pemilik === 'Rektorat') rektorat += item.jumlah;
+        if (item.kondisi !== 'Baik') rusak += item.jumlah;
+      });
+      document.getElementById('stat-total').textContent = total;
+      document.getElementById('stat-lpmi').textContent = lpmi;
+      document.getElementById('stat-rektorat').textContent = rektorat;
+      document.getElementById('stat-rusak').textContent = rusak;
+    }
+
+    function renderTable() {
+      const keyword = document.getElementById('searchInput').value.toLowerCase();
+      const unitFilter = document.getElementById('filterUnit').value;
+      const tbody = document.getElementById('tabelInventaris');
+
+      const filtered = allInventaris.filter(item => {
+        const matchSearch = item.nama_barang.toLowerCase().includes(keyword) || item.kode_barang.toLowerCase().includes(keyword);
+        const matchUnit = unitFilter === 'ALL' || item.unit_pemilik === unitFilter;
+        return matchSearch && matchUnit;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-slate-400">Belum ada data barang yang sesuai.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(item => {
+        const canEdit = currentProfile.role === 'admin' ||
+          (currentProfile.role === 'lpmi' && item.unit_pemilik === 'LPMI') ||
+          (currentProfile.role === 'rektorat' && item.unit_pemilik === 'Rektorat');
+
+        const badgeKondisi = item.kondisi === 'Baik'
+          ? 'bg-emerald-100 text-emerald-700'
+          : 'bg-red-100 text-red-700';
+
+        const badgeUnit = item.unit_pemilik === 'LPMI'
+          ? 'bg-blue-100 text-blue-800'
+          : 'bg-purple-100 text-purple-800';
+
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="p-4 font-mono text-xs font-semibold">${item.kode_barang}</td>
+            <td class="p-4">
+              <div class="font-medium text-slate-800">${item.nama_barang}</div>
+              <div class="text-xs text-slate-400">${item.keterangan || '-'}</div>
+            </td>
+            <td class="p-4">${item.kategori}</td>
+            <td class="p-4 font-semibold">${item.jumlah}</td>
+            <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs font-medium ${badgeKondisi}">${item.kondisi}</span></td>
+            <td class="p-4"><span class="px-2.5 py-1 rounded text-xs font-semibold ${badgeUnit}">${item.unit_pemilik}</span></td>
+            <td class="p-4 text-xs text-slate-500">${item.nama_penginput || '-'}</td>
+            <td class="p-4 text-right space-x-2">
+              ${canEdit ? `
+                <button type="button" onclick='editBarang(${JSON.stringify(item)})' class="text-blue-600 hover:underline text-xs font-medium">Edit</button>
+                <button type="button" onclick="hapusBarang('${item.id}')" class="text-red-600 hover:underline text-xs font-medium">Hapus</button>
+              ` : '<span class="text-xs text-slate-400 italic">Lihat Saja</span>'}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // 3. Modal & Simpan Data Barang
+    function openModalBarang() {
+      document.getElementById('modalTitle').textContent = 'Tambah Barang Inventaris';
+      document.getElementById('formBarang').reset();
+      document.getElementById('barangId').value = '';
+      if (currentProfile.role === 'lpmi') document.getElementById('unitPemilik').value = 'LPMI';
+      if (currentProfile.role === 'rektorat') document.getElementById('unitPemilik').value = 'Rektorat';
+      document.getElementById('modalBarang').classList.remove('hidden');
+    }
+
+    function closeModalBarang() {
+      document.getElementById('modalBarang').classList.add('hidden');
+    }
+
+    function editBarang(item) {
+      document.getElementById('modalTitle').textContent = 'Edit Barang Inventaris';
+      document.getElementById('barangId').value = item.id;
+      document.getElementById('kodeBarang').value = item.kode_barang;
+      document.getElementById('namaBarang').value = item.nama_barang;
+      document.getElementById('kategoriBarang').value = item.kategori;
+      document.getElementById('jumlahBarang').value = item.jumlah;
+      document.getElementById('kondisiBarang').value = item.kondisi;
+      document.getElementById('unitPemilik').value = item.unit_pemilik;
+      document.getElementById('keteranganBarang').value = item.keterangan || '';
+      document.getElementById('modalBarang').classList.remove('hidden');
+    }
+
+    document.getElementById('formBarang').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('barangId').value;
+      const payload = {
+        kode_barang: document.getElementById('kodeBarang').value.trim(),
+        nama_barang: document.getElementById('namaBarang').value.trim(),
+        kategori: document.getElementById('kategoriBarang').value.trim(),
+        jumlah: parseInt(document.getElementById('jumlahBarang').value),
+        kondisi: document.getElementById('kondisiBarang').value,
+        unit_pemilik: document.getElementById('unitPemilik').value,
+        keterangan: document.getElementById('keteranganBarang').value.trim(),
+        diinput_oleh: currentUser.id,
+        nama_penginput: currentProfile.nama_lengkap,
+        updated_at: new Date()
+      };
+
+      let res;
+      if (id) {
+        res = await sb.from('inventaris').update(payload).eq('id', id);
+      } else {
+        res = await sb.from('inventaris').insert([payload]);
+      }
+
+      if (res.error) {
+        alert('Gagal menyimpan: ' + res.error.message);
+      } else {
+        closeModalBarang();
+        loadInventaris();
+      }
+    });
+
+    async function hapusBarang(id) {
+      if (!confirm('Yakin ingin menghapus data barang ini?')) return;
+      const { error } = await sb.from('inventaris').delete().eq('id', id);
+      if (error) alert('Gagal menghapus: ' + error.message);
+      else loadInventaris();
+    }
+
+    // 4. Manajemen Pengguna (Khusus Admin)
+    async function loadUsers() {
+      const { data } = await sb.from('profiles').select('*').order('created_at', { ascending: true });
+      if (!data) return;
+
+      document.getElementById('tabelPengguna').innerHTML = data.map(u => `
+        <tr class="hover:bg-slate-50">
+          <td class="p-4 font-medium">${u.nama_lengkap}</td>
+          <td class="p-4 text-slate-500">${u.email}</td>
+          <td class="p-4">
+            <select onchange="ubahRole('${u.id}', this.value)" class="border rounded px-2 py-1 text-xs bg-white uppercase font-semibold">
+              <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
+              <option value="lpmi" ${u.role === 'lpmi' ? 'selected' : ''}>Staf LPMI</option>
+              <option value="rektorat" ${u.role === 'rektorat' ? 'selected' : ''}>Staf Rektorat</option>
+            </select>
+          </td>
+          <td class="p-4">
+            <span class="px-2.5 py-1 rounded-full text-xs font-medium ${u.status_aktif ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">
+              ${u.status_aktif ? 'Aktif' : 'Nonaktif'}
+            </span>
+          </td>
+          <td class="p-4 text-right">
+            ${u.id !== currentUser.id ? `
+              <button type="button" onclick="toggleStatus('${u.id}', ${!u.status_aktif})" class="text-xs font-medium ${u.status_aktif ? 'text-red-600' : 'text-emerald-600'} hover:underline">
+                ${u.status_aktif ? 'Nonaktifkan' : 'Aktifkan'}
+              </button>
+            ` : '<span class="text-xs text-slate-400">Akun Anda</span>'}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    document.getElementById('formUserBaru').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btnBuatUser');
+      btn.disabled = true;
+      btn.textContent = 'Memproses...';
+
+      const nama = document.getElementById('newNama').value.trim();
+      const email = document.getElementById('newEmail').value.trim();
+      const password = document.getElementById('newPassword').value;
+      const role = document.getElementById('newRole').value;
+
+      const tempClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+        auth: { persistSession: false }
+      });
+
+      const { error } = await tempClient.auth.signUp({
+        email,
+        password,
+        options: { data: { nama_lengkap: nama, role: role } }
+      });
+
+      if (error) {
+        alert('Gagal membuat akun: ' + error.message);
+      } else {
+        alert('Akun staf berhasil dibuat!');
+        document.getElementById('formUserBaru').reset();
+        setTimeout(loadUsers, 1000);
+      }
+
+      btn.disabled = false;
+      btn.textContent = '+ Buat Akun';
+    });
+
+    async function ubahRole(userId, roleBaru) {
+      await sb.from('profiles').update({ role: roleBaru }).eq('id', userId);
+      loadUsers();
+    }
+
+    async function toggleStatus(userId, statusBaru) {
+      await sb.from('profiles').update({ status_aktif: statusBaru }).eq('id', userId);
+      loadUsers();
+    }
+
+    function switchTab(tab) {
+      document.getElementById('section-inventaris').classList.toggle('hidden', tab !== 'inventaris');
+      document.getElementById('section-pengguna').classList.toggle('hidden', tab !== 'pengguna');
+      document.getElementById('nav-inventaris').className = tab === 'inventaris'
+        ? 'w-full text-left px-4 py-2.5 rounded-lg bg-blue-800 text-white font-medium flex items-center gap-3'
+        : 'w-full text-left px-4 py-2.5 rounded-lg text-blue-200 hover:bg-blue-900 font-medium flex items-center gap-3';
+      document.getElementById('nav-pengguna').className = tab === 'pengguna'
+        ? 'w-full text-left px-4 py-2.5 rounded-lg bg-blue-800 text-white font-medium flex items-center gap-3'
+        : 'w-full text-left px-4 py-2.5 rounded-lg text-blue-200 hover:bg-blue-900 font-medium flex items-center gap-3';
+    }
+
+    async function logout() {
+      await sb.auth.signOut();
+      window.location.href = 'index.html';
+    }
+
+    initDashboard();
+  </script>
+</body>
+</html>

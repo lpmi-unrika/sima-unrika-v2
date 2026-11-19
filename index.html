@@ -11,11 +11,11 @@
 
   <div class="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 border border-slate-200">
     <div class="text-center mb-8">
-      <div class="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-blue-900 text-white font-bold text-2xl mb-4 shadow">
+      <div id="loginLogoContainer" class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-900 text-white font-bold text-2xl mb-4 shadow overflow-hidden">
         S
       </div>
-      <h1 class="text-2xl font-bold text-slate-800">SIMA UNRIKA</h1>
-      <p class="text-sm text-slate-500 mt-1">Sistem Informasi Manajemen Administrasi</p>
+      <h1 id="loginAppTitle" class="text-2xl font-bold text-slate-800">SIMA UNRIKA</h1>
+      <p id="loginAppSubtitle" class="text-sm text-slate-500 mt-1">Sistem Informasi Manajemen Administrasi &amp; Inventaris Terpadu</p>
     </div>
 
     <div id="alertBox" class="hidden mb-4 p-3 rounded-lg text-sm bg-red-50 text-red-700 border border-red-200"></div>
@@ -23,7 +23,7 @@
     <form id="loginForm" class="space-y-5">
       <div>
         <label class="block text-sm font-medium text-slate-700 mb-1">Email Akun</label>
-        <input type="email" id="email" required placeholder="contoh: admin@unrika.ac.id"
+        <input type="email" id="email" required placeholder="Masukkan email terdaftar"
           class="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-800 focus:border-blue-800 outline-none transition">
       </div>
 
@@ -40,7 +40,7 @@
     </form>
 
     <p class="text-center text-xs text-slate-400 mt-8">
-      &copy; 2026 LPMI &amp; Rektorat UNRIKA. Hak Akses Terbatas.
+      &copy; 2026 SIMA - Sistem Informasi Manajemen Administrasi Terpadu.
     </p>
   </div>
 
@@ -49,7 +49,16 @@
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByYnh6Z3BsZ3Bodm53Z25maG9uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwODEyOTMsImV4cCI6MjExMDY1NzI5M30.v3eDXKjtSaH0Ypt2zx-lF_tgsWVmhRWQ3AGRRX8vYMI';
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // Jika sudah login, langsung arahkan ke dashboard
+    // Muat pengaturan logo jika pernah disimpan di perangkat
+    const savedLogo = localStorage.getItem('sima_custom_logo');
+    const savedTitle = localStorage.getItem('sima_custom_title');
+    if (savedLogo) {
+      document.getElementById('loginLogoContainer').innerHTML = `<img src="${savedLogo}" alt="Logo" class="w-full h-full object-contain bg-white p-1">`;
+    }
+    if (savedTitle) {
+      document.getElementById('loginAppTitle').textContent = savedTitle;
+    }
+
     sb.auth.getSession().then(({ data: { session } }) => {
       if (session) window.location.href = 'dashboard.html';
     });
@@ -75,7 +84,6 @@
         return;
       }
 
-      // Cek apakah akun berstatus aktif di tabel profiles
       const { data: profile, error: profErr } = await sb
         .from('profiles')
         .select('status_aktif')

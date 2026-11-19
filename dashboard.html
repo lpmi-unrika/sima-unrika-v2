@@ -7,6 +7,26 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    @media print {
+      body * { visibility: hidden; }
+      #areaCetakA4, #areaCetakA4 * { visibility: visible; }
+      #areaCetakA4 {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 210mm;
+        min-height: 297mm;
+        padding: 8mm;
+        background: white;
+        box-shadow: none !important;
+      }
+      @page {
+        size: A4 portrait;
+        margin: 6mm;
+      }
+    }
+  </style>
 </head>
 <body class="bg-slate-100 min-h-screen flex flex-col md:flex-row font-sans text-slate-800">
 
@@ -41,7 +61,7 @@
 
         <button type="button" onclick="switchTab('pengaturan')" id="nav-pengaturan"
           class="w-full text-left px-4 py-2.5 rounded-lg text-blue-200 hover:bg-blue-900 font-medium flex items-center gap-3 text-sm">
-          <span>🎨</span> Pengaturan Logo &amp; Identitas
+          <span>⚙️</span> Pengaturan Logo &amp; Kode
         </button>
 
         <button type="button" onclick="switchTab('pengguna')" id="nav-pengguna"
@@ -70,15 +90,25 @@
     <!-- TAB 1: DATA INVENTARIS                     -->
     <!-- ========================================== -->
     <section id="section-inventaris">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
         <div>
           <h2 id="headerInventarisTitle" class="text-2xl font-bold text-slate-800">Inventaris Barang</h2>
           <p id="headerInventarisDesc" class="text-sm text-slate-500">Pengelolaan data aset dan perlengkapan kerja</p>
         </div>
-        <button type="button" onclick="openModalBarang()"
-          class="bg-blue-900 hover:bg-blue-800 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition text-sm">
-          + Tambah Barang Baru
-        </button>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" onclick="bukaCetakA4Terpilih()"
+            class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition text-sm">
+            🖨️ Cetak QR Terpilih (<span id="countSelected">0</span>)
+          </button>
+          <button type="button" onclick="bukaCetakA4Semua()"
+            class="bg-indigo-700 hover:bg-indigo-600 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition text-sm">
+            📄 Cetak Semua QR (A4)
+          </button>
+          <button type="button" onclick="openModalBarang()"
+            class="bg-blue-900 hover:bg-blue-800 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition text-sm">
+            + Tambah Barang Baru
+          </button>
+        </div>
       </div>
 
       <!-- Kartu Statistik Dinamis Sesuai Unit -->
@@ -101,6 +131,9 @@
         <table class="w-full text-left border-collapse">
           <thead>
             <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase">
+              <th class="p-4 w-10">
+                <input type="checkbox" id="checkAllBarang" onchange="togglePilihSemua(this.checked)" class="rounded border-slate-300">
+              </th>
               <th class="p-4">Foto</th>
               <th class="p-4">Kode &amp; QR</th>
               <th class="p-4">Nama Barang</th>
@@ -112,7 +145,7 @@
             </tr>
           </thead>
           <tbody id="tabelInventaris" class="divide-y divide-slate-100 text-sm text-slate-700">
-            <tr><td colspan="8" class="p-6 text-center text-slate-400">Memuat data inventaris...</td></tr>
+            <tr><td colspan="9" class="p-6 text-center text-slate-400">Memuat data inventaris...</td></tr>
           </tbody>
         </table>
       </div>
@@ -183,35 +216,103 @@
     </section>
 
     <!-- ========================================== -->
-    <!-- TAB 4: PENGATURAN LOGO & IDENTITAS         -->
+    <!-- TAB 4: PENGATURAN LOGO & NOMOR INVENTARIS  -->
     <!-- ========================================== -->
     <section id="section-pengaturan" class="hidden">
       <div class="mb-6">
-        <h2 class="text-2xl font-bold text-slate-800">Penyesuaian Logo &amp; Identitas Sistem</h2>
-        <p class="text-sm text-slate-500">Sesuaikan logo institusi (UNRIKA, LPMI, Rektorat, atau logo unit lainnya)</p>
+        <h2 class="text-2xl font-bold text-slate-800">Pengaturan Logo Dashboard &amp; Format Kode</h2>
+        <p class="text-sm text-slate-500">Sesuaikan logo per dashboard pengguna/unit serta standar penomoran inventaris</p>
       </div>
 
-      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm max-w-xl space-y-5">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Aplikasi / Header Utama</label>
-          <input type="text" id="inputCustomTitle" placeholder="Contoh: SIMA UNRIKA / SIMA LPMI"
-            class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Kartu 1: Logo per Dashboard Pengguna -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-5">
+          <div>
+            <h3 class="font-bold text-slate-800">1. Logo &amp; Identitas Dashboard Pengguna</h3>
+            <p class="text-xs text-slate-500 mt-0.5">Logo ini digunakan pada sidebar dan label cetak QR (<strong id="settingTargetUserLabel">-</strong>)</p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Header Dashboard</label>
+            <input type="text" id="inputCustomTitle" placeholder="Contoh: SIMA LPMI / SIMA REKTORAT / SIMA UNRIKA"
+              class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Subjudul Unit / Keterangan</label>
+            <input type="text" id="inputCustomSubtitle" placeholder="Contoh: Lembaga Penjaminan Mutu Internal"
+              class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Pilih / Ambil Foto Logo (PNG / JPG / SVG)</label>
+            <div class="flex flex-wrap gap-2 mt-1">
+              <label class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-800 px-3 py-2 rounded-lg text-xs font-semibold border border-blue-200">
+                📁 Pilih File Logo
+                <input type="file" id="inputLogoFile" accept="image/*" class="hidden" onchange="previewLogoFile(this)">
+              </label>
+              <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-300">
+                📷 Foto Logo dari Kamera
+                <input type="file" id="inputLogoCamera" accept="image/*" capture="environment" class="hidden" onchange="previewLogoFile(this)">
+              </label>
+            </div>
+            <div id="previewLogoBox" class="mt-3 hidden flex items-center gap-3 p-2 bg-slate-50 rounded-lg border">
+              <img id="previewLogoImg" src="" class="w-12 h-12 object-contain bg-white rounded border">
+              <span class="text-xs text-slate-500">Pratinjau logo siap disimpan</span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 pt-2">
+            <button type="button" onclick="simpanPengaturanLogo()"
+              class="bg-blue-900 hover:bg-blue-800 text-white px-5 py-2 rounded-lg text-sm font-medium">
+              Simpan Logo Dashboard Ini
+            </button>
+            <button type="button" onclick="resetLogoDefault()"
+              class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium">
+              Reset Default
+            </button>
+          </div>
         </div>
 
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Unggah File Logo (PNG / JPG / SVG)</label>
-          <input type="file" id="inputLogoFile" accept="image/*"
-            class="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-800 hover:file:bg-blue-100">
-        </div>
+        <!-- Kartu 2: Pengaturan Format Nomor Inventaris -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-5">
+          <div>
+            <h3 class="font-bold text-slate-800">2. Format Nomor Inventaris Otomatis</h3>
+            <p class="text-xs text-slate-500 mt-0.5">Format standar: <code>[KATEGORI]-[UNIT/LOKASI]-[TAHUN]-[URUT]</code></p>
+          </div>
 
-        <div class="flex items-center gap-4 pt-2">
-          <button type="button" onclick="simpanPengaturanLogo()"
-            class="bg-blue-900 hover:bg-blue-800 text-white px-5 py-2 rounded-lg text-sm font-medium">
-            Simpan Perubahan Logo
-          </button>
-          <button type="button" onclick="resetLogoDefault()"
-            class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium">
-            Reset Default
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Format Tahun</label>
+              <select id="settingFormatTahun" onchange="updateContohNomor()" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white">
+                <option value="2">2 Digit (Contoh: 26)</option>
+                <option value="4">4 Digit (Contoh: 2026)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Digit Nomor Urut</label>
+              <select id="settingDigitUrut" onchange="updateContohNomor()" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white">
+                <option value="3">3 Digit (001, 002...)</option>
+                <option value="4">4 Digit (0001, 0002...)</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Kode Lokasi / Unit Default</label>
+            <input type="text" id="settingKodeLokasi" maxlength="4" onkeyup="updateContohNomor()" placeholder="Mis: LPMI / ADM / GDG / BTM"
+              class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm uppercase">
+            <p class="text-[11px] text-slate-400 mt-1">Kosongkan untuk otomatis mengikuti unit pemilik barang (LPMI / REKT).</p>
+          </div>
+
+          <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p class="text-xs text-blue-800 font-semibold">Contoh Hasil Nomor Inventaris:</p>
+            <p id="contohFormatNomor" class="font-mono text-base font-bold text-blue-950 mt-1">EL-LPMI-26-001</p>
+          </div>
+
+          <button type="button" onclick="simpanPengaturanKode()"
+            class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-sm font-medium">
+            Simpan Format Nomor
           </button>
         </div>
       </div>
@@ -269,22 +370,27 @@
   <!-- MODAL 1: FORM TAMBAH / EDIT BARANG         -->
   <!-- ========================================== -->
   <div id="modalBarang" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-    <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-xl my-8">
+    <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-xl my-8">
       <h3 id="modalTitle" class="text-lg font-bold text-slate-800 mb-4">Tambah Barang Inventaris</h3>
       <form id="formBarang" class="space-y-4">
         <input type="hidden" id="barangId">
         <input type="hidden" id="existingFotoUrl">
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Kode Inventaris (Otomatis)</label>
-            <div class="flex gap-2">
-              <input type="text" id="kodeBarang" required readonly
-                class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 font-mono text-xs font-bold text-blue-900">
-              <button type="button" onclick="generateKodeOtomatis()" title="Generate Ulang Kode"
-                class="px-3 py-2 bg-slate-200 hover:bg-slate-300 rounded-lg text-xs font-semibold">↻</button>
-            </div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Kategori Barang</label>
+            <select id="pilihKodeKategori" onchange="handleKategoriChange()" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white">
+              <option value="EL|Elektronik">EL - Elektronik</option>
+              <option value="TK|Teknologi/Komputer">TK - Teknologi / Komputer</option>
+              <option value="FU|Furniture/Mebel">FU - Furniture / Mebel</option>
+              <option value="ATK|Alat Tulis Kantor">ATK - Alat Tulis Kantor</option>
+              <option value="KD|Kendaraan/Operasional">KD - Kendaraan / Operasional</option>
+              <option value="CUSTOM">Kode Kustom Lainnya...</option>
+            </select>
+            <input type="text" id="inputKodeKategoriCustom" maxlength="3" onkeyup="generateKodeOtomatis()" placeholder="Kode 2-3 huruf (mis: PR)"
+              class="hidden mt-1.5 w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs uppercase">
           </div>
+
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">Unit Pemilik</label>
             <select id="unitPemilik" onchange="generateKodeOtomatis()" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white">
@@ -292,12 +398,28 @@
               <option value="Rektorat">Rektorat</option>
             </select>
           </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Kode Lokasi/Ruang (Opsional)</label>
+            <input type="text" id="kodeLokasiBarang" maxlength="4" onkeyup="generateKodeOtomatis()" placeholder="Mis: ADM / GDG / BTM"
+              class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm uppercase">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Nomor Inventaris Terstruktur (Otomatis &amp; Dapat Diedit)</label>
+          <div class="flex gap-2">
+            <input type="text" id="kodeBarang" required
+              class="w-full px-3 py-2 rounded-lg border border-blue-300 bg-blue-50 font-mono text-sm font-bold text-blue-950">
+            <button type="button" onclick="generateKodeOtomatis()" title="Buat Ulang Nomor Urut"
+              class="px-3 py-2 bg-slate-200 hover:bg-slate-300 rounded-lg text-xs font-semibold shrink-0">↻ Urutkan</button>
+          </div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Barang</label>
-            <input type="text" id="namaBarang" required placeholder="Contoh: Laptop / Printer / Meja"
+            <input type="text" id="namaBarang" required placeholder="Contoh: Laptop Asus / Meja Rapat"
               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
           </div>
           <div>
@@ -309,8 +431,8 @@
 
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Kategori</label>
-            <input type="text" id="kategoriBarang" required placeholder="Elektronik / ATK"
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Label Kategori</label>
+            <input type="text" id="kategoriBarang" required value="Elektronik"
               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
           </div>
           <div>
@@ -328,15 +450,27 @@
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">Tanggal Masuk</label>
-            <input type="date" id="tanggalMasuk" required
+            <input type="date" id="tanggalMasuk" required onchange="generateKodeOtomatis()"
               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
           </div>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Upload Foto Barang (Opsional)</label>
-          <input type="file" id="fotoBarangFile" accept="image/*"
-            class="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:font-semibold file:bg-blue-50 file:text-blue-800 hover:file:bg-blue-100">
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Foto Barang (Galeri File atau Kamera Langsung)</label>
+          <div class="flex flex-wrap items-center gap-3 mt-1">
+            <label class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-900 px-3.5 py-2 rounded-lg text-xs font-semibold border border-blue-200">
+              📁 Pilih File / Galeri
+              <input type="file" id="fotoBarangFile" accept="image/*" class="hidden" onchange="handlePilihFotoBarang(this)">
+            </label>
+            <label class="cursor-pointer bg-emerald-50 hover:bg-emerald-100 text-emerald-800 px-3.5 py-2 rounded-lg text-xs font-semibold border border-emerald-200">
+              📷 Ambil Foto Kamera
+              <input type="file" id="fotoBarangCamera" accept="image/*" capture="environment" class="hidden" onchange="handlePilihFotoBarang(this)">
+            </label>
+            <span id="namaFileFotoTerpilih" class="text-xs text-slate-500 truncate max-w-[200px]">Belum ada foto dipilih</span>
+          </div>
+          <div id="previewFotoBarangBox" class="hidden mt-2">
+            <img id="previewFotoBarangImg" src="" class="h-24 w-24 object-cover rounded-lg border border-slate-300">
+          </div>
         </div>
 
         <div>
@@ -356,24 +490,68 @@
   </div>
 
   <!-- ========================================== -->
-  <!-- MODAL 2: QR CODE LABEL BARANG              -->
+  <!-- MODAL 2: CETAK QR CODE SATUAN / MASSAL A4  -->
   <!-- ========================================== -->
-  <div id="modalQr" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-    <div class="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-xl">
-      <h3 class="text-lg font-bold text-slate-800 mb-1">Label QR Code Inventaris</h3>
-      <p id="qrUnitLabel" class="text-xs font-semibold text-blue-800 uppercase mb-4">UNIT</p>
-      <div id="qrcodeCanvas" class="flex justify-center p-4 bg-white border border-slate-200 rounded-xl mb-3"></div>
-      <p id="qrKodeText" class="font-mono text-sm font-bold text-slate-800"></p>
-      <p id="qrNamaText" class="text-xs text-slate-500 mb-5"></p>
-      <div class="flex gap-2 justify-center">
-        <button type="button" onclick="downloadQrCode()"
-          class="bg-blue-900 hover:bg-blue-800 text-white px-4 py-2 rounded-lg text-xs font-semibold">
-          Unduh QR PNG
-        </button>
-        <button type="button" onclick="document.getElementById('modalQr').classList.add('hidden')"
-          class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg text-xs font-semibold">
-          Tutup
-        </button>
+  <div id="modalCetakA4" class="hidden fixed inset-0 bg-black/60 flex items-start justify-center p-4 z-50 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-6xl w-full p-6 shadow-2xl my-4">
+      <!-- Bar Kontrol Pengaturan Cetak A4 (Tidak Ikut Tercetak) -->
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 mb-4 border-b border-slate-200">
+        <div>
+          <h3 class="text-lg font-bold text-slate-800">Pengaturan Ukuran &amp; Cetak Label QR (Kertas A4)</h3>
+          <p class="text-xs text-slate-500">Pilih ukuran per kotak label (cm) dan posisi logo (utuh di samping atau di tengah QR)</p>
+        </div>
+
+        <div class="flex flex-wrap items-end gap-3">
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Ukuran Kotak Label</label>
+            <select id="presetUkuranLabel" onchange="handlePresetUkuranChange()" class="border rounded-lg px-3 py-1.5 text-xs bg-white font-semibold">
+              <option value="5x5">5 × 5 cm (Persegi Standar)</option>
+              <option value="8x3">8 × 3 cm (Logo Utuh di Samping)</option>
+              <option value="10x10">10 × 10 cm (Persegi Besar)</option>
+              <option value="CUSTOM">Custom Ukuran (cm)...</option>
+            </select>
+          </div>
+
+          <!-- Input Custom Lebar x Tinggi (cm) -->
+          <div id="boxCustomUkuran" class="hidden flex items-end gap-1.5">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Lebar (cm)</label>
+              <input type="number" id="customLebarCm" step="0.5" min="2" max="19" value="8" onchange="renderGridCetakA4()"
+                class="w-20 border rounded-lg px-2 py-1.5 text-xs font-semibold">
+            </div>
+            <span class="pb-1.5 text-xs font-bold text-slate-400">×</span>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Tinggi (cm)</label>
+              <input type="number" id="customTinggiCm" step="0.5" min="2" max="27" value="3" onchange="renderGridCetakA4()"
+                class="w-20 border rounded-lg px-2 py-1.5 text-xs font-semibold">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Posisi Gambar Logo</label>
+            <select id="printLogoMode" onchange="renderGridCetakA4()" class="border rounded-lg px-3 py-1.5 text-xs bg-white font-semibold">
+              <option value="SIDE">Logo Utuh di Samping (Cocok 8×3 cm)</option>
+              <option value="CENTER" selected>Logo di Tengah QR Code</option>
+              <option value="NONE">Tanpa Logo</option>
+            </select>
+          </div>
+
+          <button type="button" onclick="window.print()"
+            class="bg-blue-900 hover:bg-blue-800 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow">
+            🖨️ Cetak / Simpan PDF (A4)
+          </button>
+          <button type="button" onclick="document.getElementById('modalCetakA4').classList.add('hidden')"
+            class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold">
+            Tutup
+          </button>
+        </div>
+      </div>
+
+      <!-- Kanvas Kertas A4 (210mm x 297mm) -->
+      <div class="bg-slate-200 p-4 rounded-xl overflow-x-auto flex justify-center">
+        <div id="areaCetakA4" class="bg-white shadow-md" style="width: 210mm; min-height: 297mm; padding: 8mm;">
+          <div id="gridLabelA4" class="flex flex-wrap gap-2 items-start content-start"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -403,7 +581,7 @@
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">Keperluan / Lokasi Pemakaian</label>
-          <input type="text" id="keperluanPinjam" required placeholder="Contoh: Rapat Akreditasi / Kegiatan Aula"
+          <input type="text" id="keperluanPinjam" required placeholder="Contoh: Rapat / Kegiatan Aula"
             class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
         </div>
         <div class="flex justify-end gap-3 pt-4 border-t">
@@ -424,7 +602,10 @@
     let currentUser = null;
     let currentProfile = null;
     let allInventaris = [];
-    let allPeminjaman = [];
+    let selectedItemIds = new Set();
+    let itemsToPrintA4 = [];
+    let selectedFileUntukUpload = null;
+    let tempLogoBase64 = null;
 
     function formatWaktu(isoString) {
       if (!isoString) return '-';
@@ -433,7 +614,6 @@
         ' ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
     }
 
-    // Catat ke Riwayat Kegiatan
     async function catatKegiatan(aksi, detail) {
       if (!currentProfile) return;
       await sb.from('riwayat_kegiatan').insert([{
@@ -444,10 +624,19 @@
       }]);
     }
 
-    // Muat Logo Kustom
-    function terapkanLogoKustom() {
-      const savedLogo = localStorage.getItem('sima_custom_logo');
-      const savedTitle = localStorage.getItem('sima_custom_title');
+    // ==========================================
+    // PENGATURAN LOGO PER DASHBOARD PENGGUNA
+    // ==========================================
+    function getStoragePrefix() {
+      return currentProfile ? `sima_cfg_${currentProfile.role}_${currentProfile.id}` : 'sima_cfg_default';
+    }
+
+    function terapkanPengaturanPengguna() {
+      const prefix = getStoragePrefix();
+      const savedLogo = localStorage.getItem(prefix + '_logo') || localStorage.getItem('sima_custom_logo');
+      const savedTitle = localStorage.getItem(prefix + '_title');
+      const savedSubtitle = localStorage.getItem(prefix + '_subtitle');
+
       if (savedLogo) {
         document.getElementById('sidebarLogo').innerHTML = `<img src="${savedLogo}" alt="Logo" class="w-full h-full object-contain bg-white p-1">`;
       }
@@ -455,36 +644,84 @@
         document.getElementById('sidebarTitle').textContent = savedTitle;
         document.getElementById('inputCustomTitle').value = savedTitle;
       }
+      if (savedSubtitle) {
+        document.getElementById('sidebarSubtitle').textContent = savedSubtitle;
+        document.getElementById('inputCustomSubtitle').value = savedSubtitle;
+      }
+
+      const fmtTahun = localStorage.getItem(prefix + '_fmt_tahun') || '2';
+      const digitUrut = localStorage.getItem(prefix + '_digit_urut') || '3';
+      const kodeLokasi = localStorage.getItem(prefix + '_kode_lokasi') || '';
+      document.getElementById('settingFormatTahun').value = fmtTahun;
+      document.getElementById('settingDigitUrut').value = digitUrut;
+      document.getElementById('settingKodeLokasi').value = kodeLokasi;
+      updateContohNomor();
     }
 
-    function simpanPengaturanLogo() {
-      const titleVal = document.getElementById('inputCustomTitle').value.trim();
-      const fileInput = document.getElementById('inputLogoFile');
-      if (titleVal) localStorage.setItem('sima_custom_title', titleVal);
-
-      if (fileInput.files && fileInput.files[0]) {
+    function previewLogoFile(input) {
+      if (input.files && input.files[0]) {
         const reader = new FileReader();
         reader.onload = function(e) {
-          localStorage.setItem('sima_custom_logo', e.target.result);
-          terapkanLogoKustom();
-          alert('Logo dan identitas berhasil diperbarui!');
+          tempLogoBase64 = e.target.result;
+          document.getElementById('previewLogoImg').src = tempLogoBase64;
+          document.getElementById('previewLogoBox').classList.remove('hidden');
         };
-        reader.readAsDataURL(fileInput.files[0]);
-      } else {
-        terapkanLogoKustom();
-        alert('Identitas berhasil diperbarui!');
+        reader.readAsDataURL(input.files[0]);
       }
     }
 
+    function simpanPengaturanLogo() {
+      const prefix = getStoragePrefix();
+      const titleVal = document.getElementById('inputCustomTitle').value.trim();
+      const subtitleVal = document.getElementById('inputCustomSubtitle').value.trim();
+
+      if (titleVal) {
+        localStorage.setItem(prefix + '_title', titleVal);
+        localStorage.setItem('sima_custom_title', titleVal);
+      }
+      if (subtitleVal) {
+        localStorage.setItem(prefix + '_subtitle', subtitleVal);
+      }
+      if (tempLogoBase64) {
+        localStorage.setItem(prefix + '_logo', tempLogoBase64);
+        localStorage.setItem('sima_custom_logo', tempLogoBase64);
+      }
+      terapkanPengaturanPengguna();
+      alert('Logo dan identitas dashboard Anda berhasil disimpan!');
+    }
+
     function resetLogoDefault() {
+      const prefix = getStoragePrefix();
+      localStorage.removeItem(prefix + '_logo');
+      localStorage.removeItem(prefix + '_title');
+      localStorage.removeItem(prefix + '_subtitle');
       localStorage.removeItem('sima_custom_logo');
       localStorage.removeItem('sima_custom_title');
       location.reload();
     }
 
-    // 1. Inisialisasi Dashboard & Penyesuaian Keterangan Sesuai Role
+    function updateContohNomor() {
+      const fmtTahun = document.getElementById('settingFormatTahun').value;
+      const digitUrut = parseInt(document.getElementById('settingDigitUrut').value);
+      const lok = document.getElementById('settingKodeLokasi').value.trim().toUpperCase() ||
+        (currentProfile && currentProfile.role === 'rektorat' ? 'REKT' : 'LPMI');
+      const tahunStr = fmtTahun === '2' ? String(new Date().getFullYear()).slice(-2) : String(new Date().getFullYear());
+      const urutStr = '1'.padStart(digitUrut, '0');
+      document.getElementById('contohFormatNomor').textContent = `EL-${lok}-${tahunStr}-${urutStr}`;
+    }
+
+    function simpanPengaturanKode() {
+      const prefix = getStoragePrefix();
+      localStorage.setItem(prefix + '_fmt_tahun', document.getElementById('settingFormatTahun').value);
+      localStorage.setItem(prefix + '_digit_urut', document.getElementById('settingDigitUrut').value);
+      localStorage.setItem(prefix + '_kode_lokasi', document.getElementById('settingKodeLokasi').value.trim().toUpperCase());
+      alert('Standar penomoran inventaris berhasil disimpan!');
+    }
+
+    // ==========================================
+    // INISIALISASI DASHBOARD & ROLE
+    // ==========================================
     async function initDashboard() {
-      terapkanLogoKustom();
       const { data: { session } } = await sb.auth.getSession();
       if (!session) {
         window.location.href = 'index.html';
@@ -503,12 +740,13 @@
       currentProfile = profile;
       document.getElementById('userNameDisplay').textContent = profile.nama_lengkap;
       document.getElementById('userRoleBadge').textContent = 'UNIT: ' + profile.role.toUpperCase();
+      document.getElementById('settingTargetUserLabel').textContent = `${profile.nama_lengkap} (${profile.role.toUpperCase()})`;
 
       const unitSelect = document.getElementById('unitPemilik');
       const filterUnit = document.getElementById('filterUnit');
 
-      // Keterangan & tampilan menyesuaikan masing-masing pengguna
       if (profile.role === 'lpmi') {
+        document.getElementById('sidebarTitle').textContent = 'SIMA LPMI';
         document.getElementById('sidebarSubtitle').textContent = 'Inventaris Unit LPMI';
         document.getElementById('headerInventarisTitle').textContent = 'Inventaris Barang LPMI';
         document.getElementById('headerInventarisDesc').textContent = 'Data aset, perlengkapan, dan sirkulasi barang unit LPMI';
@@ -516,6 +754,7 @@
         unitSelect.disabled = true;
         filterUnit.value = 'LPMI';
       } else if (profile.role === 'rektorat') {
+        document.getElementById('sidebarTitle').textContent = 'SIMA REKTORAT';
         document.getElementById('sidebarSubtitle').textContent = 'Inventaris Unit Rektorat';
         document.getElementById('headerInventarisTitle').textContent = 'Inventaris Barang Rektorat';
         document.getElementById('headerInventarisDesc').textContent = 'Data aset, perlengkapan, dan sirkulasi barang unit Rektorat';
@@ -523,20 +762,24 @@
         unitSelect.disabled = true;
         filterUnit.value = 'Rektorat';
       } else if (profile.role === 'admin') {
-        document.getElementById('sidebarSubtitle').textContent = 'Sistem Inventaris Terpadu';
+        document.getElementById('sidebarTitle').textContent = 'SIMA TERPADU';
+        document.getElementById('sidebarSubtitle').textContent = 'Manajemen Aset Lintas Unit';
         document.getElementById('headerInventarisTitle').textContent = 'Inventaris Barang Terpadu';
-        document.getElementById('headerInventarisDesc').textContent = 'Pengelolaan aset dan inventaris lintas unit kerja';
+        document.getElementById('headerInventarisDesc').textContent = 'Pengelolaan aset dan inventaris seluruh unit kerja';
         unitSelect.disabled = false;
         document.getElementById('nav-pengguna').classList.remove('hidden');
         loadUsers();
       }
 
+      terapkanPengaturanPengguna();
       await loadInventaris();
       await loadPeminjaman();
       await loadKegiatan();
     }
 
-    // 2. Muat Data Inventaris & Kartu Statistik Dinamis
+    // ==========================================
+    // DATA INVENTARIS & STATISTIK
+    // ==========================================
     async function loadInventaris() {
       const { data, error } = await sb.from('inventaris').select('*').order('created_at', { ascending: false });
       if (!error) {
@@ -550,40 +793,21 @@
       const container = document.getElementById('statsContainer');
       const role = currentProfile.role;
 
-      if (role === 'lpmi') {
-        const items = allInventaris.filter(i => i.unit_pemilik === 'LPMI');
+      if (role === 'lpmi' || role === 'rektorat') {
+        const unitName = role === 'lpmi' ? 'LPMI' : 'Rektorat';
+        const accentColor = role === 'lpmi' ? 'text-blue-600' : 'text-purple-600';
+        const numColor = role === 'lpmi' ? 'text-blue-900' : 'text-purple-900';
+        const items = allInventaris.filter(i => i.unit_pemilik === unitName);
         const total = items.reduce((s, i) => s + i.jumlah, 0);
         const baik = items.filter(i => i.kondisi === 'Baik').reduce((s, i) => s + i.jumlah, 0);
         const rusak = items.filter(i => i.kondisi !== 'Baik').reduce((s, i) => s + i.jumlah, 0);
         container.innerHTML = `
           <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <p class="text-xs font-semibold text-blue-600 uppercase">Total Inventaris LPMI</p>
-            <p class="text-2xl font-bold text-blue-900 mt-1">${total}</p>
+            <p class="text-xs font-semibold ${accentColor} uppercase">Total Inventaris ${unitName}</p>
+            <p class="text-2xl font-bold ${numColor} mt-1">${total}</p>
           </div>
           <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <p class="text-xs font-semibold text-slate-400 uppercase">Jenis Barang LPMI</p>
-            <p class="text-2xl font-bold text-slate-800 mt-1">${items.length}</p>
-          </div>
-          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <p class="text-xs font-semibold text-emerald-600 uppercase">Kondisi Baik</p>
-            <p class="text-2xl font-bold text-emerald-700 mt-1">${baik}</p>
-          </div>
-          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <p class="text-xs font-semibold text-red-500 uppercase">Perlu Perbaikan</p>
-            <p class="text-2xl font-bold text-red-600 mt-1">${rusak}</p>
-          </div>`;
-      } else if (role === 'rektorat') {
-        const items = allInventaris.filter(i => i.unit_pemilik === 'Rektorat');
-        const total = items.reduce((s, i) => s + i.jumlah, 0);
-        const baik = items.filter(i => i.kondisi === 'Baik').reduce((s, i) => s + i.jumlah, 0);
-        const rusak = items.filter(i => i.kondisi !== 'Baik').reduce((s, i) => s + i.jumlah, 0);
-        container.innerHTML = `
-          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <p class="text-xs font-semibold text-purple-600 uppercase">Total Inventaris Rektorat</p>
-            <p class="text-2xl font-bold text-purple-900 mt-1">${total}</p>
-          </div>
-          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <p class="text-xs font-semibold text-slate-400 uppercase">Jenis Barang Rektorat</p>
+            <p class="text-xs font-semibold text-slate-400 uppercase">Jenis Barang ${unitName}</p>
             <p class="text-2xl font-bold text-slate-800 mt-1">${items.length}</p>
           </div>
           <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
@@ -622,21 +846,24 @@
       }
     }
 
-    function renderTable() {
+    function getFilteredInventaris() {
       const keyword = document.getElementById('searchInput').value.toLowerCase();
       const unitFilter = document.getElementById('filterUnit').value;
-      const tbody = document.getElementById('tabelInventaris');
-
-      const filtered = allInventaris.filter(item => {
+      return allInventaris.filter(item => {
         const matchSearch = item.nama_barang.toLowerCase().includes(keyword) ||
           item.kode_barang.toLowerCase().includes(keyword) ||
           (item.nama_pic && item.nama_pic.toLowerCase().includes(keyword));
         const matchUnit = unitFilter === 'ALL' || item.unit_pemilik === unitFilter;
         return matchSearch && matchUnit;
       });
+    }
+
+    function renderTable() {
+      const filtered = getFilteredInventaris();
+      const tbody = document.getElementById('tabelInventaris');
 
       if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-slate-400">Belum ada data barang yang sesuai.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="p-6 text-center text-slate-400">Belum ada data barang yang sesuai.</td></tr>';
         return;
       }
 
@@ -645,13 +872,9 @@
           (currentProfile.role === 'lpmi' && item.unit_pemilik === 'LPMI') ||
           (currentProfile.role === 'rektorat' && item.unit_pemilik === 'Rektorat');
 
-        const badgeKondisi = item.kondisi === 'Baik'
-          ? 'bg-emerald-100 text-emerald-700'
-          : 'bg-red-100 text-red-700';
-
-        const badgeUnit = item.unit_pemilik === 'LPMI'
-          ? 'bg-blue-100 text-blue-800'
-          : 'bg-purple-100 text-purple-800';
+        const badgeKondisi = item.kondisi === 'Baik' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700';
+        const badgeUnit = item.unit_pemilik === 'LPMI' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800';
+        const isChecked = selectedItemIds.has(item.id) ? 'checked' : '';
 
         const fotoHtml = item.foto_url
           ? `<a href="${item.foto_url}" target="_blank"><img src="${item.foto_url}" class="w-12 h-12 object-cover rounded-lg border border-slate-200 hover:scale-105 transition"></a>`
@@ -659,12 +882,15 @@
 
         return `
           <tr class="hover:bg-slate-50">
+            <td class="p-4">
+              <input type="checkbox" ${isChecked} onchange="togglePilihSatu('${item.id}', this.checked)" class="rounded border-slate-300">
+            </td>
             <td class="p-4">${fotoHtml}</td>
             <td class="p-4">
               <div class="font-mono text-xs font-bold text-slate-800">${item.kode_barang}</div>
-              <button type="button" onclick='showQrModal(${JSON.stringify(item)})'
-                class="mt-1 inline-flex items-center gap-1 text-[11px] bg-slate-100 hover:bg-blue-100 text-blue-900 px-2 py-0.5 rounded font-medium">
-                Lihat QR
+              <button type="button" onclick='cetakSatuQrA4(${JSON.stringify(item)})'
+                class="mt-1 inline-flex items-center gap-1 text-[11px] bg-blue-50 hover:bg-blue-100 text-blue-900 px-2 py-0.5 rounded font-semibold border border-blue-200">
+                🖨️ QR / Cetak
               </button>
             </td>
             <td class="p-4">
@@ -693,49 +919,264 @@
       }).join('');
     }
 
-    // 3. Pembuatan Kode Inventaris Otomatis
+    // ==========================================
+    // GENERATOR NOMOR INVENTARIS TERSTRUKTUR
+    // ==========================================
+    function handleKategoriChange() {
+      const val = document.getElementById('pilihKodeKategori').value;
+      const customInput = document.getElementById('inputKodeKategoriCustom');
+      if (val === 'CUSTOM') {
+        customInput.classList.remove('hidden');
+        document.getElementById('kategoriBarang').value = '';
+      } else {
+        customInput.classList.add('hidden');
+        const [, labelKategori] = val.split('|');
+        document.getElementById('kategoriBarang').value = labelKategori;
+      }
+      generateKodeOtomatis();
+    }
+
     function generateKodeOtomatis() {
-      const unit = document.getElementById('unitPemilik').value.toUpperCase();
-      const tahun = new Date().getFullYear();
-      const countUnit = allInventaris.filter(i => i.unit_pemilik.toUpperCase() === unit).length + 1;
-      const nomorUrut = String(countUnit).padStart(3, '0');
-      const acak = Math.floor(10 + Math.random() * 90);
-      document.getElementById('kodeBarang').value = `INV-${unit}-${tahun}-${nomorUrut}-${acak}`;
-    }
+      const prefix = getStoragePrefix();
+      const fmtTahun = localStorage.getItem(prefix + '_fmt_tahun') || '2';
+      const digitUrut = parseInt(localStorage.getItem(prefix + '_digit_urut') || '3');
+      const defaultLokasi = localStorage.getItem(prefix + '_kode_lokasi') || '';
 
-    // 4. QR Code Generator
-    function showQrModal(item) {
-      const canvasDiv = document.getElementById('qrcodeCanvas');
-      canvasDiv.innerHTML = '';
-      document.getElementById('qrUnitLabel').textContent = 'UNIT ' + item.unit_pemilik;
-      document.getElementById('qrKodeText').textContent = item.kode_barang;
-      document.getElementById('qrNamaText').textContent = `${item.nama_barang} (PIC: ${item.nama_pic || '-'})`;
+      const katSelect = document.getElementById('pilihKodeKategori').value;
+      let kodeKat = 'EL';
+      if (katSelect === 'CUSTOM') {
+        kodeKat = document.getElementById('inputKodeKategoriCustom').value.trim().toUpperCase() || 'INV';
+      } else {
+        kodeKat = katSelect.split('|')[0];
+      }
 
-      const qrPayload = `KODE: ${item.kode_barang} | BARANG: ${item.nama_barang} | UNIT: ${item.unit_pemilik} | PIC: ${item.nama_pic || '-'} | TGL MASUK: ${item.tanggal_masuk || '-'}`;
-      new QRCode(canvasDiv, {
-        text: qrPayload,
-        width: 180,
-        height: 180
+      const lokasiInput = document.getElementById('kodeLokasiBarang').value.trim().toUpperCase();
+      const unitVal = document.getElementById('unitPemilik').value.toUpperCase();
+      const kodeUnitDefault = unitVal === 'REKTORAT' ? 'REKT' : unitVal;
+      const kodeLokasi = lokasiInput || defaultLokasi || kodeUnitDefault;
+
+      const tglMasukVal = document.getElementById('tanggalMasuk').value;
+      const tahunFull = tglMasukVal ? tglMasukVal.split('-')[0] : String(new Date().getFullYear());
+      const kodeTahun = fmtTahun === '2' ? tahunFull.slice(-2) : tahunFull;
+
+      const prefixPencarian = `${kodeKat}-${kodeLokasi}-${kodeTahun}-`;
+      const existingSamePrefix = allInventaris.filter(i => i.kode_barang.startsWith(prefixPencarian));
+      let maxUrut = existingSamePrefix.length;
+      existingSamePrefix.forEach(item => {
+        const parts = item.kode_barang.split('-');
+        const num = parseInt(parts[parts.length - 1]);
+        if (!isNaN(num) && num > maxUrut) maxUrut = num;
       });
-      document.getElementById('modalQr').classList.remove('hidden');
+      const nomorUrut = String(maxUrut + 1).padStart(digitUrut, '0');
+
+      document.getElementById('kodeBarang').value = `${kodeKat}-${kodeLokasi}-${kodeTahun}-${nomorUrut}`;
     }
 
-    function downloadQrCode() {
-      const img = document.querySelector('#qrcodeCanvas img');
-      if (!img) return;
-      const link = document.createElement('a');
-      link.href = img.src;
-      link.download = document.getElementById('qrKodeText').textContent + '.png';
-      link.click();
+    // ==========================================
+    // CETAK QR CODE (5x5, 8x3, 10x10, CUSTOM CM)
+    // DENGAN OPSI LOGO UTUH DI SAMPING / TENGAH QR
+    // ==========================================
+    function togglePilihSatu(id, checked) {
+      if (checked) selectedItemIds.add(id);
+      else selectedItemIds.delete(id);
+      document.getElementById('countSelected').textContent = selectedItemIds.size;
     }
 
-    // 5. Modal & Simpan Barang (Termasuk Upload Foto)
+    function togglePilihSemua(checked) {
+      const filtered = getFilteredInventaris();
+      filtered.forEach(item => {
+        if (checked) selectedItemIds.add(item.id);
+        else selectedItemIds.delete(item.id);
+      });
+      document.getElementById('countSelected').textContent = selectedItemIds.size;
+      renderTable();
+    }
+
+    function handlePresetUkuranChange() {
+      const val = document.getElementById('presetUkuranLabel').value;
+      const boxCustom = document.getElementById('boxCustomUkuran');
+      const logoModeSelect = document.getElementById('printLogoMode');
+
+      if (val === 'CUSTOM') {
+        boxCustom.classList.remove('hidden');
+      } else {
+        boxCustom.classList.add('hidden');
+      }
+
+      // Otomatis sarankan Logo Utuh di Samping untuk 8x3 cm, dan Logo di Tengah QR untuk 5x5 / 10x10
+      if (val === '8x3') {
+        logoModeSelect.value = 'SIDE';
+      } else if (val === '5x5' || val === '10x10') {
+        logoModeSelect.value = 'CENTER';
+      }
+
+      renderGridCetakA4();
+    }
+
+    function getDimensiLabelCm() {
+      const preset = document.getElementById('presetUkuranLabel').value;
+      if (preset === '5x5') return { w: 5, h: 5 };
+      if (preset === '8x3') return { w: 8, h: 3 };
+      if (preset === '10x10') return { w: 10, h: 10 };
+      const w = parseFloat(document.getElementById('customLebarCm').value) || 8;
+      const h = parseFloat(document.getElementById('customTinggiCm').value) || 3;
+      return { w, h };
+    }
+
+    function cetakSatuQrA4(item) {
+      itemsToPrintA4 = [item];
+      document.getElementById('modalCetakA4').classList.remove('hidden');
+      renderGridCetakA4();
+    }
+
+    function bukaCetakA4Terpilih() {
+      if (selectedItemIds.size === 0) {
+        alert('Centang minimal satu barang pada tabel terlebih dahulu, atau klik tombol "Cetak Semua QR (A4)".');
+        return;
+      }
+      itemsToPrintA4 = allInventaris.filter(i => selectedItemIds.has(i.id));
+      document.getElementById('modalCetakA4').classList.remove('hidden');
+      renderGridCetakA4();
+    }
+
+    function bukaCetakA4Semua() {
+      const filtered = getFilteredInventaris();
+      if (filtered.length === 0) {
+        alert('Belum ada data barang untuk dicetak.');
+        return;
+      }
+      itemsToPrintA4 = filtered;
+      document.getElementById('modalCetakA4').classList.remove('hidden');
+      renderGridCetakA4();
+    }
+
+    function renderGridCetakA4() {
+      const dim = getDimensiLabelCm();
+      const logoMode = document.getElementById('printLogoMode').value; // 'SIDE', 'CENTER', 'NONE'
+      const grid = document.getElementById('gridLabelA4');
+      grid.innerHTML = '';
+
+      const prefix = getStoragePrefix();
+      const savedLogo = localStorage.getItem(prefix + '_logo') || localStorage.getItem('sima_custom_logo');
+      const headerTitle = document.getElementById('sidebarTitle').textContent;
+
+      // Deteksi apakah label melebar (horizontal seperti 8x3 cm) atau kotak/vertikal (5x5, 10x10)
+      const isHorizontal = dim.w >= dim.h * 1.4;
+
+      // Hitung ukuran QR piksel proporsional (1 cm ≈ 37.8 px)
+      const minSideCm = Math.min(dim.w, dim.h);
+      const qrPx = isHorizontal
+        ? Math.max(54, Math.round((dim.h - 0.55) * 37.8))
+        : Math.max(60, Math.round((minSideCm * 0.54) * 37.8));
+
+      const sideLogoPx = Math.max(40, Math.round((dim.h - 0.7) * 37.8));
+      const centerLogoPx = Math.max(16, Math.round(qrPx * 0.24));
+
+      itemsToPrintA4.forEach((item, idx) => {
+        const card = document.createElement('div');
+        card.style.width = `${dim.w}cm`;
+        card.style.height = `${dim.h}cm`;
+        card.style.boxSizing = 'border-box';
+        card.className = 'border-2 border-slate-900 rounded-md bg-white overflow-hidden break-inside-avoid flex ' +
+          (isHorizontal ? 'flex-row items-center px-2 py-1 gap-2 text-left' : 'flex-col items-center justify-between p-1.5 text-center');
+
+        const qrContainerId = `qr-a4-${idx}`;
+
+        // Opsi 1: Logo di tengah QR
+        const centerLogoHtml = (logoMode === 'CENTER' && savedLogo)
+          ? `<img src="${savedLogo}" style="width:${centerLogoPx}px; height:${centerLogoPx}px;"
+               class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-0.5 rounded shadow-sm object-contain border border-slate-200">`
+          : '';
+
+        if (isHorizontal) {
+          // Opsi 2: Logo utuh di samping (kiri), QR di tengah, dan keterangan di kanan (ideal untuk 8 x 3 cm)
+          const sideLogoBoxHtml = (logoMode === 'SIDE')
+            ? `<div style="width:${sideLogoPx}px; height:${sideLogoPx}px;"
+                 class="shrink-0 flex items-center justify-center border-r border-slate-300 pr-1.5">
+                 ${savedLogo
+                   ? `<img src="${savedLogo}" alt="Logo" class="w-full h-full object-contain">`
+                   : `<div class="w-full h-full rounded bg-blue-950 text-white font-extrabold text-sm flex items-center justify-center">${headerTitle.slice(0, 4)}</div>`}
+               </div>`
+            : '';
+
+          card.innerHTML = `
+            ${sideLogoBoxHtml}
+            <div class="relative shrink-0 flex items-center justify-center" style="width:${qrPx}px; height:${qrPx}px;">
+              <div id="${qrContainerId}"></div>
+              ${centerLogoHtml}
+            </div>
+            <div class="flex-1 min-w-0 flex flex-col justify-center leading-tight pl-0.5">
+              <div class="text-[8px] font-bold uppercase text-blue-900 border-b border-slate-300 pb-0.5 mb-0.5 truncate">
+                ${headerTitle} • ${item.unit_pemilik}
+              </div>
+              <div class="font-mono text-[11px] font-extrabold text-slate-950 truncate">${item.kode_barang}</div>
+              <div class="text-[10px] font-semibold text-slate-800 truncate">${item.nama_barang}</div>
+              <div class="text-[8px] text-slate-500 truncate mt-0.5">PIC: ${item.nama_pic || '-'} • ${item.tanggal_masuk || '-'}</div>
+            </div>
+          `;
+        } else {
+          // Tata Letak Kotak Persegi (mis. 5 x 5 cm atau 10 x 10 cm)
+          const isLarge = dim.w >= 8;
+          const sideHeaderLogo = (logoMode === 'SIDE' && savedLogo)
+            ? `<img src="${savedLogo}" class="inline-block ${isLarge ? 'w-5 h-5' : 'w-3.5 h-3.5'} object-contain mr-1 align-middle">`
+            : '';
+
+          card.innerHTML = `
+            <div class="w-full border-b border-slate-300 pb-0.5 font-bold uppercase tracking-tight truncate ${isLarge ? 'text-xs' : 'text-[8px]'}">
+              ${sideHeaderLogo}${headerTitle} • ${item.unit_pemilik}
+            </div>
+            <div class="relative flex items-center justify-center my-auto" style="width:${qrPx}px; height:${qrPx}px;">
+              <div id="${qrContainerId}"></div>
+              ${centerLogoHtml}
+            </div>
+            <div class="w-full leading-tight">
+              <div class="font-mono font-extrabold text-slate-950 truncate ${isLarge ? 'text-sm' : 'text-[10px]'}">${item.kode_barang}</div>
+              <div class="font-semibold text-slate-800 truncate ${isLarge ? 'text-xs' : 'text-[9px]'}">${item.nama_barang}</div>
+              ${isLarge ? `<div class="text-[10px] text-slate-500 truncate mt-0.5">PIC: ${item.nama_pic || '-'} | Masuk: ${item.tanggal_masuk || '-'}</div>` : ''}
+            </div>
+          `;
+        }
+
+        grid.appendChild(card);
+
+        const qrPayload = `KODE: ${item.kode_barang} | BARANG: ${item.nama_barang} | UNIT: ${item.unit_pemilik} | PIC: ${item.nama_pic || '-'}`;
+        new QRCode(document.getElementById(qrContainerId), {
+          text: qrPayload,
+          width: qrPx,
+          height: qrPx,
+          correctLevel: QRCode.CorrectLevel.H
+        });
+      });
+    }
+
+    // ==========================================
+    // FORM BARANG, UPLOAD GALERI & KAMERA
+    // ==========================================
+    function handlePilihFotoBarang(input) {
+      if (input.files && input.files[0]) {
+        selectedFileUntukUpload = input.files[0];
+        document.getElementById('namaFileFotoTerpilih').textContent = selectedFileUntukUpload.name;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('previewFotoBarangImg').src = e.target.result;
+          document.getElementById('previewFotoBarangBox').classList.remove('hidden');
+        };
+        reader.readAsDataURL(selectedFileUntukUpload);
+      }
+    }
+
     function openModalBarang() {
       document.getElementById('modalTitle').textContent = 'Tambah Barang Inventaris';
       document.getElementById('formBarang').reset();
       document.getElementById('barangId').value = '';
       document.getElementById('existingFotoUrl').value = '';
+      selectedFileUntukUpload = null;
+      document.getElementById('namaFileFotoTerpilih').textContent = 'Belum ada foto dipilih';
+      document.getElementById('previewFotoBarangBox').classList.add('hidden');
+      document.getElementById('inputKodeKategoriCustom').classList.add('hidden');
+      document.getElementById('kategoriBarang').value = 'Elektronik';
       document.getElementById('tanggalMasuk').valueAsDate = new Date();
+
       if (currentProfile.role === 'lpmi') document.getElementById('unitPemilik').value = 'LPMI';
       if (currentProfile.role === 'rektorat') document.getElementById('unitPemilik').value = 'Rektorat';
       generateKodeOtomatis();
@@ -750,6 +1191,15 @@
       document.getElementById('modalTitle').textContent = 'Edit Barang Inventaris';
       document.getElementById('barangId').value = item.id;
       document.getElementById('existingFotoUrl').value = item.foto_url || '';
+      selectedFileUntukUpload = null;
+      document.getElementById('namaFileFotoTerpilih').textContent = item.foto_url ? 'Foto tersimpan' : 'Belum ada foto';
+      if (item.foto_url) {
+        document.getElementById('previewFotoBarangImg').src = item.foto_url;
+        document.getElementById('previewFotoBarangBox').classList.remove('hidden');
+      } else {
+        document.getElementById('previewFotoBarangBox').classList.add('hidden');
+      }
+
       document.getElementById('kodeBarang').value = item.kode_barang;
       document.getElementById('namaBarang').value = item.nama_barang;
       document.getElementById('namaPic').value = item.nama_pic || '';
@@ -770,20 +1220,17 @@
 
       const id = document.getElementById('barangId').value;
       let fotoUrl = document.getElementById('existingFotoUrl').value;
-      const fileInput = document.getElementById('fotoBarangFile');
 
-      // Proses upload foto ke Supabase Storage jika ada file dipilih
-      if (fileInput.files && fileInput.files[0]) {
-        const file = fileInput.files[0];
-        const fileExt = file.name.split('.').pop();
+      if (selectedFileUntukUpload) {
+        const fileExt = selectedFileUntukUpload.name.split('.').pop() || 'jpg';
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
 
         const { error: uploadErr } = await sb.storage
           .from('foto-inventaris')
-          .upload(fileName, file);
+          .upload(fileName, selectedFileUntukUpload);
 
         if (uploadErr) {
-          alert('Gagal mengunggah foto: ' + uploadErr.message + '\nPastikan bucket "foto-inventaris" sudah dibuat di Storage.');
+          alert('Gagal mengunggah foto: ' + uploadErr.message);
           btn.disabled = false;
           btn.textContent = 'Simpan Data';
           return;
@@ -838,17 +1285,20 @@
       const { error } = await sb.from('inventaris').delete().eq('id', id);
       if (error) alert('Gagal menghapus: ' + error.message);
       else {
+        selectedItemIds.delete(id);
+        document.getElementById('countSelected').textContent = selectedItemIds.size;
         await catatKegiatan('Hapus Inventaris', `Menghapus barang ${kode} (${nama})`);
         loadInventaris();
         loadKegiatan();
       }
     }
 
-    // 6. Modul Peminjaman & Pengembalian Barang
+    // ==========================================
+    // PEMINJAMAN & RIWAYAT PENGGUNAAN
+    // ==========================================
     async function loadPeminjaman() {
       const { data } = await sb.from('peminjaman').select('*').order('tanggal_pinjam', { ascending: false });
       if (!data) return;
-      allPeminjaman = data;
 
       const tbody = document.getElementById('tabelPeminjaman');
       if (data.length === 0) {
@@ -919,7 +1369,6 @@
         return;
       }
 
-      // 1. Simpan catatan peminjaman
       const { error } = await sb.from('peminjaman').insert([{
         inventaris_id: barang.id,
         kode_barang: barang.kode_barang,
@@ -937,7 +1386,6 @@
         return;
       }
 
-      // 2. Kurangi stok tersedia di tabel inventaris
       await sb.from('inventaris').update({ jumlah: barang.jumlah - jmlPinjam }).eq('id', barang.id);
       await catatKegiatan('Pinjam Barang', `${peminjam} meminjam ${jmlPinjam} unit ${barang.kode_barang} (${barang.nama_barang})`);
 
@@ -966,7 +1414,9 @@
       loadKegiatan();
     }
 
-    // 7. Riwayat Kegiatan
+    // ==========================================
+    // RIWAYAT KEGIATAN & MANAJEMEN PENGGUNA
+    // ==========================================
     async function loadKegiatan() {
       const { data } = await sb.from('riwayat_kegiatan').select('*').order('waktu', { ascending: false }).limit(100);
       if (!data) return;
@@ -988,7 +1438,6 @@
       `).join('');
     }
 
-    // 8. Manajemen Pengguna (Khusus Admin)
     async function loadUsers() {
       const { data } = await sb.from('profiles').select('*').order('created_at', { ascending: true });
       if (!data) return;

@@ -7,11 +7,13 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
   <style>
     @media print {
       body * { visibility: hidden; }
-      #areaCetakA4, #areaCetakA4 * { visibility: visible; }
-      #areaCetakA4 {
+      body.printing-qr #areaCetakA4,
+      body.printing-qr #areaCetakA4 * { visibility: visible; }
+      body.printing-qr #areaCetakA4 {
         position: absolute;
         left: 0;
         top: 0;
@@ -21,6 +23,20 @@
         background: white;
         box-shadow: none !important;
       }
+
+      body.printing-report #areaCetakLaporanA4,
+      body.printing-report #areaCetakLaporanA4 * { visibility: visible; }
+      body.printing-report #areaCetakLaporanA4 {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 210mm;
+        min-height: 297mm;
+        padding: 12mm 14mm;
+        background: white;
+        box-shadow: none !important;
+      }
+
       @page {
         size: A4 portrait;
         margin: 6mm;
@@ -90,22 +106,26 @@
     <!-- TAB 1: DATA INVENTARIS                     -->
     <!-- ========================================== -->
     <section id="section-inventaris">
-      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+      <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-6">
         <div>
           <h2 id="headerInventarisTitle" class="text-2xl font-bold text-slate-800">Inventaris Barang</h2>
           <p id="headerInventarisDesc" class="text-sm text-slate-500">Pengelolaan data aset dan perlengkapan kerja</p>
         </div>
         <div class="flex flex-wrap gap-2">
+          <button type="button" onclick="bukaModalLaporanA4()"
+            class="bg-emerald-700 hover:bg-emerald-600 text-white px-3.5 py-2.5 rounded-lg font-medium shadow-sm transition text-xs sm:text-sm">
+            📊 Ekspor Laporan (PDF A4 / Excel / CSV)
+          </button>
           <button type="button" onclick="bukaCetakA4Terpilih()"
-            class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition text-sm">
-            🖨️ Cetak QR Terpilih (<span id="countSelected">0</span>)
+            class="bg-slate-800 hover:bg-slate-700 text-white px-3.5 py-2.5 rounded-lg font-medium shadow-sm transition text-xs sm:text-sm">
+            🖨️ QR Terpilih (<span id="countSelected">0</span>)
           </button>
           <button type="button" onclick="bukaCetakA4Semua()"
-            class="bg-indigo-700 hover:bg-indigo-600 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition text-sm">
-            📄 Cetak Semua QR (A4)
+            class="bg-indigo-700 hover:bg-indigo-600 text-white px-3.5 py-2.5 rounded-lg font-medium shadow-sm transition text-xs sm:text-sm">
+            📄 Semua QR (A4)
           </button>
           <button type="button" onclick="openModalBarang()"
-            class="bg-blue-900 hover:bg-blue-800 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition text-sm">
+            class="bg-blue-900 hover:bg-blue-800 text-white px-4 py-2.5 rounded-lg font-medium shadow-sm transition text-xs sm:text-sm">
             + Tambah Barang Baru
           </button>
         </div>
@@ -229,7 +249,7 @@
         <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-5">
           <div>
             <h3 class="font-bold text-slate-800">1. Logo &amp; Identitas Dashboard Pengguna</h3>
-            <p class="text-xs text-slate-500 mt-0.5">Logo ini digunakan pada sidebar dan label cetak QR (<strong id="settingTargetUserLabel">-</strong>)</p>
+            <p class="text-xs text-slate-500 mt-0.5">Logo ini digunakan pada sidebar, label QR, dan kop laporan (<strong id="settingTargetUserLabel">-</strong>)</p>
           </div>
 
           <div>
@@ -245,27 +265,41 @@
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">Pilih / Ambil Foto Logo (PNG / JPG / SVG)</label>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Logo Utama / Unit (Kanan Kop Laporan &amp; QR)</label>
             <div class="flex flex-wrap gap-2 mt-1">
               <label class="cursor-pointer bg-blue-50 hover:bg-blue-100 text-blue-800 px-3 py-2 rounded-lg text-xs font-semibold border border-blue-200">
-                📁 Pilih File Logo
-                <input type="file" id="inputLogoFile" accept="image/*" class="hidden" onchange="previewLogoFile(this)">
+                📁 Pilih File Logo Unit
+                <input type="file" id="inputLogoFile" accept="image/*" class="hidden" onchange="previewLogoFile(this, 'UNIT')">
               </label>
               <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-300">
-                📷 Foto Logo dari Kamera
-                <input type="file" id="inputLogoCamera" accept="image/*" capture="environment" class="hidden" onchange="previewLogoFile(this)">
+                📷 Foto Logo Kamera
+                <input type="file" id="inputLogoCamera" accept="image/*" capture="environment" class="hidden" onchange="previewLogoFile(this, 'UNIT')">
               </label>
             </div>
-            <div id="previewLogoBox" class="mt-3 hidden flex items-center gap-3 p-2 bg-slate-50 rounded-lg border">
+            <div id="previewLogoBox" class="mt-2 hidden flex items-center gap-3 p-2 bg-slate-50 rounded-lg border">
               <img id="previewLogoImg" src="" class="w-12 h-12 object-contain bg-white rounded border">
-              <span class="text-xs text-slate-500">Pratinjau logo siap disimpan</span>
+              <span class="text-xs text-slate-500">Pratinjau logo unit siap disimpan</span>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Logo Institusi / UNRIKA (Kiri Kop Laporan Resmi - Opsional)</label>
+            <div class="flex flex-wrap gap-2 mt-1">
+              <label class="cursor-pointer bg-amber-50 hover:bg-amber-100 text-amber-900 px-3 py-2 rounded-lg text-xs font-semibold border border-amber-200">
+                🏛️ Pilih Logo Institusi (Kiri Kop)
+                <input type="file" id="inputLogoInstitusiFile" accept="image/*" class="hidden" onchange="previewLogoFile(this, 'INSTITUSI')">
+              </label>
+            </div>
+            <div id="previewLogoInstitusiBox" class="mt-2 hidden flex items-center gap-3 p-2 bg-slate-50 rounded-lg border">
+              <img id="previewLogoInstitusiImg" src="" class="w-12 h-12 object-contain bg-white rounded border">
+              <span class="text-xs text-slate-500">Pratinjau logo institusi siap disimpan</span>
             </div>
           </div>
 
           <div class="flex items-center gap-3 pt-2">
             <button type="button" onclick="simpanPengaturanLogo()"
               class="bg-blue-900 hover:bg-blue-800 text-white px-5 py-2 rounded-lg text-sm font-medium">
-              Simpan Logo Dashboard Ini
+              Simpan Pengaturan Logo
             </button>
             <button type="button" onclick="resetLogoDefault()"
               class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium">
@@ -494,7 +528,6 @@
   <!-- ========================================== -->
   <div id="modalCetakA4" class="hidden fixed inset-0 bg-black/60 flex items-start justify-center p-4 z-50 overflow-y-auto">
     <div class="bg-white rounded-2xl max-w-6xl w-full p-6 shadow-2xl my-4">
-      <!-- Bar Kontrol Pengaturan Cetak A4 (Tidak Ikut Tercetak) -->
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 mb-4 border-b border-slate-200">
         <div>
           <h3 class="text-lg font-bold text-slate-800">Pengaturan Ukuran &amp; Cetak Label QR (Kertas A4)</h3>
@@ -512,7 +545,6 @@
             </select>
           </div>
 
-          <!-- Input Custom Lebar x Tinggi (cm) -->
           <div id="boxCustomUkuran" class="hidden flex items-end gap-1.5">
             <div>
               <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Lebar (cm)</label>
@@ -536,7 +568,7 @@
             </select>
           </div>
 
-          <button type="button" onclick="window.print()"
+          <button type="button" onclick="cetakDokumen('printing-qr')"
             class="bg-blue-900 hover:bg-blue-800 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow">
             🖨️ Cetak / Simpan PDF (A4)
           </button>
@@ -547,7 +579,6 @@
         </div>
       </div>
 
-      <!-- Kanvas Kertas A4 (210mm x 297mm) -->
       <div class="bg-slate-200 p-4 rounded-xl overflow-x-auto flex justify-center">
         <div id="areaCetakA4" class="bg-white shadow-md" style="width: 210mm; min-height: 297mm; padding: 8mm;">
           <div id="gridLabelA4" class="flex flex-wrap gap-2 items-start content-start"></div>
@@ -557,7 +588,154 @@
   </div>
 
   <!-- ========================================== -->
-  <!-- MODAL 3: FORM PINJAM BARANG                -->
+  <!-- MODAL 3: EKSPOR LAPORAN RESMI (PDF A4 / EXCEL / CSV) -->
+  <!-- ========================================== -->
+  <div id="modalLaporanA4" class="hidden fixed inset-0 bg-black/60 flex items-start justify-center p-4 z-50 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-6xl w-full p-6 shadow-2xl my-4">
+      <!-- Panel Kontrol Kop & Pengesahan Laporan -->
+      <div class="border-b border-slate-200 pb-4 mb-4">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-800">Ekspor Laporan Resmi Daftar Aset &amp; Inventaris</h3>
+            <p class="text-xs text-slate-500">Sesuaikan kop surat, ruang/gedung, dan penanda tangan sebelum mencetak PDF A4 atau mengunduh Excel/CSV</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" onclick="cetakDokumen('printing-report')"
+              class="bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow">
+              🖨️ Cetak / Simpan PDF (A4)
+            </button>
+            <button type="button" onclick="exportToExcel()"
+              class="bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow">
+              📗 Unduh Excel (.xlsx)
+            </button>
+            <button type="button" onclick="exportToCsv()"
+              class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow">
+              📄 Unduh CSV (.csv)
+            </button>
+            <button type="button" onclick="document.getElementById('modalLaporanA4').classList.add('hidden')"
+              class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold">
+              Tutup
+            </button>
+          </div>
+        </div>
+
+        <!-- Form Kustomisasi Kop Surat & Pengesahan -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-xs">
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Judul Utama Kop</label>
+            <input type="text" id="lapJudul1" onkeyup="renderPratinjauLaporan()" value="DAFTAR ASET UNIVERSITAS RIAU KEPULAUAN"
+              class="w-full border rounded px-2.5 py-1.5 bg-white font-semibold">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Subjudul Unit / Lembaga</label>
+            <input type="text" id="lapJudul2" onkeyup="renderPratinjauLaporan()" value="LEMBAGA PENJAMINAN MUTU INTERNAL"
+              class="w-full border rounded px-2.5 py-1.5 bg-white font-semibold">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Periode / Tahun Akademik</label>
+            <input type="text" id="lapTahun" onkeyup="renderPratinjauLaporan()" value="TAHUN 2025/2026"
+              class="w-full border rounded px-2.5 py-1.5 bg-white font-semibold">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Filter Unit Data</label>
+            <select id="lapFilterUnit" onchange="renderPratinjauLaporan()" class="w-full border rounded px-2.5 py-1.5 bg-white font-semibold">
+              <option value="FOLLOW">Ikuti Filter Tabel Utama</option>
+              <option value="ALL">Semua Unit (Gabungan)</option>
+              <option value="LPMI">Khusus Unit LPMI</option>
+              <option value="Rektorat">Khusus Unit Rektorat</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Ruang</label>
+            <input type="text" id="lapRuang" onkeyup="renderPratinjauLaporan()" value="LPMI"
+              class="w-full border rounded px-2.5 py-1.5 bg-white">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Gedung</label>
+            <input type="text" id="lapGedung" onkeyup="renderPratinjauLaporan()" value="LPMI"
+              class="w-full border rounded px-2.5 py-1.5 bg-white">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Kota &amp; Tanggal Pengesahan</label>
+            <input type="text" id="lapTanggalTtd" onkeyup="renderPratinjauLaporan()"
+              class="w-full border rounded px-2.5 py-1.5 bg-white">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Jabatan &amp; Nama Penanda Tangan</label>
+            <div class="flex gap-1.5">
+              <input type="text" id="lapJabatanTtd" onkeyup="renderPratinjauLaporan()" value="Ketua LPMI" placeholder="Jabatan"
+                class="w-1/2 border rounded px-2 py-1.5 bg-white">
+              <input type="text" id="lapNamaTtd" onkeyup="renderPratinjauLaporan()" value="Ismarti, S.Si., M.Sc., Ph.D" placeholder="Nama & Gelar"
+                class="w-1/2 border rounded px-2 py-1.5 bg-white">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kanvas Pratinjau Dokumen Resmi A4 -->
+      <div class="bg-slate-200 p-4 rounded-xl overflow-x-auto flex justify-center">
+        <div id="areaCetakLaporanA4" class="bg-white shadow-md text-slate-900" style="width: 210mm; min-height: 297mm; padding: 12mm 14mm;">
+          <!-- Kop Surat Resmi -->
+          <div class="flex items-center justify-between border-b-2 border-slate-900 pb-3 mb-4 gap-3">
+            <div id="lapLogoKiriBox" class="w-16 h-16 flex items-center justify-center shrink-0"></div>
+            <div class="text-center flex-1 leading-snug">
+              <div id="prevLapJudul1" class="text-sm font-extrabold uppercase tracking-wide text-slate-950"></div>
+              <div id="prevLapJudul2" class="text-sm font-extrabold uppercase tracking-wide text-slate-950"></div>
+              <div id="prevLapTahun" class="text-xs font-bold uppercase text-slate-800 mt-0.5"></div>
+            </div>
+            <div id="lapLogoKananBox" class="w-16 h-16 flex items-center justify-center shrink-0"></div>
+          </div>
+
+          <!-- Info Ruang & Gedung -->
+          <div class="grid grid-cols-2 gap-2 text-xs font-bold mb-3">
+            <div>
+              <div>RUANG &nbsp;&nbsp;&nbsp;: <span id="prevLapRuang" class="font-semibold"></span></div>
+              <div class="mt-1">GEDUNG : <span id="prevLapGedung" class="font-semibold"></span></div>
+            </div>
+            <div class="text-right text-[11px] font-normal text-slate-600 self-end">
+              Dicetak melalui SIMA • Total Jenis Barang: <strong id="prevLapJumlahJenis">0</strong>
+            </div>
+          </div>
+
+          <!-- Tabel Daftar Aset Resmi -->
+          <table class="w-full border-collapse border border-slate-900 text-[11px]">
+            <thead>
+              <tr class="bg-blue-900 text-white text-center font-bold">
+                <th rowspan="2" class="border border-slate-900 px-1.5 py-1.5 w-8">No</th>
+                <th rowspan="2" class="border border-slate-900 px-2 py-1.5 w-28">Kode Inventaris</th>
+                <th rowspan="2" class="border border-slate-900 px-2 py-1.5">Nama Aset (Barang)</th>
+                <th rowspan="2" class="border border-slate-900 px-1.5 py-1.5 w-16">Tahun</th>
+                <th rowspan="2" class="border border-slate-900 px-1.5 py-1.5 w-14">Jumlah</th>
+                <th colspan="2" class="border border-slate-900 px-1.5 py-1">KONDISI</th>
+                <th rowspan="2" class="border border-slate-900 px-2 py-1.5 w-24">PIC</th>
+                <th rowspan="2" class="border border-slate-900 px-2 py-1.5 w-28">KET.</th>
+              </tr>
+              <tr class="bg-blue-800 text-white text-center font-bold">
+                <th class="border border-slate-900 px-1.5 py-1 w-12">Baik</th>
+                <th class="border border-slate-900 px-1.5 py-1 w-12">Rusak</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyLaporanA4"></tbody>
+            <tfoot id="tfootLaporanA4"></tfoot>
+          </table>
+
+          <!-- Blok Tanda Tangan / Pengesahan -->
+          <div class="mt-8 flex justify-end">
+            <div class="w-64 text-xs text-left leading-relaxed">
+              <div id="prevLapTanggalTtd"></div>
+              <div id="prevLapJabatanTtd" class="font-semibold"></div>
+              <div class="h-16"></div>
+              <div id="prevLapNamaTtd" class="font-bold underline"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL 4: FORM PINJAM BARANG                -->
   <!-- ========================================== -->
   <div id="modalPinjam" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
     <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
@@ -606,12 +784,19 @@
     let itemsToPrintA4 = [];
     let selectedFileUntukUpload = null;
     let tempLogoBase64 = null;
+    let tempLogoInstitusiBase64 = null;
 
     function formatWaktu(isoString) {
       if (!isoString) return '-';
       const d = new Date(isoString);
       return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) +
         ' ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function cetakDokumen(modeClass) {
+      document.body.classList.remove('printing-qr', 'printing-report');
+      document.body.classList.add(modeClass);
+      window.print();
     }
 
     async function catatKegiatan(aksi, detail) {
@@ -634,11 +819,16 @@
     function terapkanPengaturanPengguna() {
       const prefix = getStoragePrefix();
       const savedLogo = localStorage.getItem(prefix + '_logo') || localStorage.getItem('sima_custom_logo');
+      const savedLogoInstitusi = localStorage.getItem('sima_institusi_logo');
       const savedTitle = localStorage.getItem(prefix + '_title');
       const savedSubtitle = localStorage.getItem(prefix + '_subtitle');
 
       if (savedLogo) {
         document.getElementById('sidebarLogo').innerHTML = `<img src="${savedLogo}" alt="Logo" class="w-full h-full object-contain bg-white p-1">`;
+      }
+      if (savedLogoInstitusi) {
+        document.getElementById('previewLogoInstitusiImg').src = savedLogoInstitusi;
+        document.getElementById('previewLogoInstitusiBox').classList.remove('hidden');
       }
       if (savedTitle) {
         document.getElementById('sidebarTitle').textContent = savedTitle;
@@ -658,13 +848,19 @@
       updateContohNomor();
     }
 
-    function previewLogoFile(input) {
+    function previewLogoFile(input, targetType) {
       if (input.files && input.files[0]) {
         const reader = new FileReader();
         reader.onload = function(e) {
-          tempLogoBase64 = e.target.result;
-          document.getElementById('previewLogoImg').src = tempLogoBase64;
-          document.getElementById('previewLogoBox').classList.remove('hidden');
+          if (targetType === 'INSTITUSI') {
+            tempLogoInstitusiBase64 = e.target.result;
+            document.getElementById('previewLogoInstitusiImg').src = tempLogoInstitusiBase64;
+            document.getElementById('previewLogoInstitusiBox').classList.remove('hidden');
+          } else {
+            tempLogoBase64 = e.target.result;
+            document.getElementById('previewLogoImg').src = tempLogoBase64;
+            document.getElementById('previewLogoBox').classList.remove('hidden');
+          }
         };
         reader.readAsDataURL(input.files[0]);
       }
@@ -686,8 +882,11 @@
         localStorage.setItem(prefix + '_logo', tempLogoBase64);
         localStorage.setItem('sima_custom_logo', tempLogoBase64);
       }
+      if (tempLogoInstitusiBase64) {
+        localStorage.setItem('sima_institusi_logo', tempLogoInstitusiBase64);
+      }
       terapkanPengaturanPengguna();
-      alert('Logo dan identitas dashboard Anda berhasil disimpan!');
+      alert('Pengaturan logo dan identitas berhasil disimpan!');
     }
 
     function resetLogoDefault() {
@@ -697,6 +896,7 @@
       localStorage.removeItem(prefix + '_subtitle');
       localStorage.removeItem('sima_custom_logo');
       localStorage.removeItem('sima_custom_title');
+      localStorage.removeItem('sima_institusi_logo');
       location.reload();
     }
 
@@ -750,6 +950,10 @@
         document.getElementById('sidebarSubtitle').textContent = 'Inventaris Unit LPMI';
         document.getElementById('headerInventarisTitle').textContent = 'Inventaris Barang LPMI';
         document.getElementById('headerInventarisDesc').textContent = 'Data aset, perlengkapan, dan sirkulasi barang unit LPMI';
+        document.getElementById('lapJudul2').value = 'LEMBAGA PENJAMINAN MUTU INTERNAL';
+        document.getElementById('lapRuang').value = 'LPMI';
+        document.getElementById('lapGedung').value = 'LPMI';
+        document.getElementById('lapJabatanTtd').value = 'Ketua LPMI';
         unitSelect.value = 'LPMI';
         unitSelect.disabled = true;
         filterUnit.value = 'LPMI';
@@ -758,6 +962,11 @@
         document.getElementById('sidebarSubtitle').textContent = 'Inventaris Unit Rektorat';
         document.getElementById('headerInventarisTitle').textContent = 'Inventaris Barang Rektorat';
         document.getElementById('headerInventarisDesc').textContent = 'Data aset, perlengkapan, dan sirkulasi barang unit Rektorat';
+        document.getElementById('lapJudul2').value = 'UNIT REKTORAT';
+        document.getElementById('lapRuang').value = 'REKTORAT';
+        document.getElementById('lapGedung').value = 'REKTORAT';
+        document.getElementById('lapJabatanTtd').value = 'Kepala Bagian Rektorat';
+        document.getElementById('lapNamaTtd').value = profile.nama_lengkap;
         unitSelect.value = 'Rektorat';
         unitSelect.disabled = true;
         filterUnit.value = 'Rektorat';
@@ -770,6 +979,9 @@
         document.getElementById('nav-pengguna').classList.remove('hidden');
         loadUsers();
       }
+
+      const tglHariIni = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      document.getElementById('lapTanggalTtd').value = `Batam, ${tglHariIni}`;
 
       terapkanPengaturanPengguna();
       await loadInventaris();
@@ -920,6 +1132,190 @@
     }
 
     // ==========================================
+    // EKSPOR LAPORAN RESMI (PDF A4 / EXCEL / CSV)
+    // ==========================================
+    function getDataLaporan() {
+      const mode = document.getElementById('lapFilterUnit').value;
+      if (mode === 'FOLLOW') return getFilteredInventaris();
+      if (mode === 'ALL') return [...allInventaris];
+      return allInventaris.filter(i => i.unit_pemilik === mode);
+    }
+
+    function bukaModalLaporanA4() {
+      document.getElementById('modalLaporanA4').classList.remove('hidden');
+      renderPratinjauLaporan();
+    }
+
+    function renderPratinjauLaporan() {
+      const data = getDataLaporan();
+      const prefix = getStoragePrefix();
+      const logoUnit = localStorage.getItem(prefix + '_logo') || localStorage.getItem('sima_custom_logo');
+      const logoInstitusi = localStorage.getItem('sima_institusi_logo');
+
+      document.getElementById('lapLogoKiriBox').innerHTML = logoInstitusi
+        ? `<img src="${logoInstitusi}" class="w-16 h-16 object-contain">`
+        : (logoUnit ? `<img src="${logoUnit}" class="w-16 h-16 object-contain">` : '');
+
+      document.getElementById('lapLogoKananBox').innerHTML = logoUnit
+        ? `<img src="${logoUnit}" class="w-16 h-16 object-contain">`
+        : '';
+
+      document.getElementById('prevLapJudul1').textContent = document.getElementById('lapJudul1').value;
+      document.getElementById('prevLapJudul2').textContent = document.getElementById('lapJudul2').value;
+      document.getElementById('prevLapTahun').textContent = document.getElementById('lapTahun').value;
+      document.getElementById('prevLapRuang').textContent = document.getElementById('lapRuang').value;
+      document.getElementById('prevLapGedung').textContent = document.getElementById('lapGedung').value;
+      document.getElementById('prevLapJumlahJenis').textContent = data.length;
+
+      document.getElementById('prevLapTanggalTtd').textContent = document.getElementById('lapTanggalTtd').value;
+      document.getElementById('prevLapJabatanTtd').textContent = document.getElementById('lapJabatanTtd').value;
+      document.getElementById('prevLapNamaTtd').textContent = document.getElementById('lapNamaTtd').value;
+
+      const tbody = document.getElementById('tbodyLaporanA4');
+      const tfoot = document.getElementById('tfootLaporanA4');
+
+      if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="border border-slate-900 p-4 text-center text-slate-400">Belum ada data inventaris untuk ditampilkan.</td></tr>';
+        tfoot.innerHTML = '';
+        return;
+      }
+
+      let totalJumlah = 0;
+      let totalBaik = 0;
+      let totalRusak = 0;
+
+      tbody.innerHTML = data.map((item, index) => {
+        const tahun = item.tanggal_masuk ? item.tanggal_masuk.split('-')[0] : '-';
+        const isBaik = item.kondisi === 'Baik';
+        totalJumlah += item.jumlah;
+        if (isBaik) totalBaik += item.jumlah;
+        else totalRusak += item.jumlah;
+
+        return `
+          <tr>
+            <td class="border border-slate-900 px-1.5 py-1 text-center">${index + 1}</td>
+            <td class="border border-slate-900 px-2 py-1 font-mono text-[10px]">${item.kode_barang}</td>
+            <td class="border border-slate-900 px-2 py-1 font-medium">${item.nama_barang}</td>
+            <td class="border border-slate-900 px-1.5 py-1 text-center">${tahun}</td>
+            <td class="border border-slate-900 px-1.5 py-1 text-center font-semibold">${item.jumlah}</td>
+            <td class="border border-slate-900 px-1.5 py-1 text-center font-bold text-emerald-800">${isBaik ? '✓' : ''}</td>
+            <td class="border border-slate-900 px-1.5 py-1 text-center font-bold text-red-700">${!isBaik ? '✓' : ''}</td>
+            <td class="border border-slate-900 px-2 py-1 text-[10px]">${item.nama_pic || '-'}</td>
+            <td class="border border-slate-900 px-2 py-1 text-[10px]">${item.keterangan || (!isBaik ? item.kondisi : '')}</td>
+          </tr>
+        `;
+      }).join('');
+
+      tfoot.innerHTML = `
+        <tr class="bg-slate-100 font-bold">
+          <td colspan="4" class="border border-slate-900 px-2 py-1.5 text-right uppercase">Total Keseluruhan Unit</td>
+          <td class="border border-slate-900 px-1.5 py-1.5 text-center">${totalJumlah}</td>
+          <td class="border border-slate-900 px-1.5 py-1.5 text-center text-emerald-800">${totalBaik}</td>
+          <td class="border border-slate-900 px-1.5 py-1.5 text-center text-red-700">${totalRusak}</td>
+          <td colspan="2" class="border border-slate-900 px-2 py-1.5"></td>
+        </tr>
+      `;
+    }
+
+    function exportToExcel() {
+      const data = getDataLaporan();
+      if (data.length === 0) {
+        alert('Tidak ada data untuk diekspor.');
+        return;
+      }
+
+      const judul1 = document.getElementById('lapJudul1').value;
+      const judul2 = document.getElementById('lapJudul2').value;
+      const tahunLap = document.getElementById('lapTahun').value;
+      const ruang = document.getElementById('lapRuang').value;
+      const gedung = document.getElementById('lapGedung').value;
+
+      const rows = [
+        [judul1],
+        [judul2],
+        [tahunLap],
+        [],
+        ['RUANG :', ruang],
+        ['GEDUNG :', gedung],
+        [],
+        ['No', 'Kode Inventaris', 'Nama Aset (Barang)', 'Kategori', 'Tahun Pengadaan', 'Jumlah (Unit)', 'Kondisi Baik', 'Kondisi Rusak', 'Unit Pemilik', 'Nama PIC', 'Keterangan']
+      ];
+
+      let totalUnit = 0;
+      data.forEach((item, idx) => {
+        const tahun = item.tanggal_masuk ? item.tanggal_masuk.split('-')[0] : '-';
+        const isBaik = item.kondisi === 'Baik';
+        totalUnit += item.jumlah;
+        rows.push([
+          idx + 1,
+          item.kode_barang,
+          item.nama_barang,
+          item.kategori,
+          tahun,
+          item.jumlah,
+          isBaik ? '✓' : '',
+          !isBaik ? '✓' : '',
+          item.unit_pemilik,
+          item.nama_pic || '-',
+          item.keterangan || (!isBaik ? item.kondisi : '')
+        ]);
+      });
+
+      rows.push(['', '', 'TOTAL KESELURUHAN', '', '', totalUnit, '', '', '', '', '']);
+      rows.push([]);
+      rows.push(['', '', '', '', '', '', '', '', document.getElementById('lapTanggalTtd').value]);
+      rows.push(['', '', '', '', '', '', '', '', document.getElementById('lapJabatanTtd').value]);
+      rows.push([]);
+      rows.push([]);
+      rows.push(['', '', '', '', '', '', '', '', document.getElementById('lapNamaTtd').value]);
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [
+        { wch: 5 }, { wch: 20 }, { wch: 30 }, { wch: 16 }, { wch: 16 },
+        { wch: 14 }, { wch: 13 }, { wch: 13 }, { wch: 14 }, { wch: 22 }, { wch: 28 }
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Daftar Aset');
+      XLSX.writeFile(wb, `Daftar_Aset_${ruang.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    }
+
+    function exportToCsv() {
+      const data = getDataLaporan();
+      if (data.length === 0) {
+        alert('Tidak ada data untuk diekspor.');
+        return;
+      }
+
+      const headers = ['No', 'Kode Inventaris', 'Nama Aset (Barang)', 'Kategori', 'Tahun Pengadaan', 'Jumlah (Unit)', 'Kondisi', 'Unit Pemilik', 'Nama PIC', 'Tanggal Masuk', 'Keterangan'];
+      const csvRows = [headers.join(',')];
+
+      data.forEach((item, idx) => {
+        const tahun = item.tanggal_masuk ? item.tanggal_masuk.split('-')[0] : '-';
+        const row = [
+          idx + 1,
+          `"${item.kode_barang}"`,
+          `"${(item.nama_barang || '').replace(/"/g, '""')}"`,
+          `"${(item.kategori || '').replace(/"/g, '""')}"`,
+          `"${tahun}"`,
+          item.jumlah,
+          `"${item.kondisi}"`,
+          `"${item.unit_pemilik}"`,
+          `"${(item.nama_pic || '-').replace(/"/g, '""')}"`,
+          `"${item.tanggal_masuk || '-'}"`,
+          `"${(item.keterangan || '').replace(/"/g, '""')}"`
+        ];
+        csvRows.push(row.join(','));
+      });
+
+      const blob = new Blob(['\uFEFF' + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `Data_Inventaris_${new Date().toISOString().slice(0, 10)}.csv`;
+      link.click();
+    }
+
+    // ==========================================
     // GENERATOR NOMOR INVENTARIS TERSTRUKTUR
     // ==========================================
     function handleKategoriChange() {
@@ -974,7 +1370,6 @@
 
     // ==========================================
     // CETAK QR CODE (5x5, 8x3, 10x10, CUSTOM CM)
-    // DENGAN OPSI LOGO UTUH DI SAMPING / TENGAH QR
     // ==========================================
     function togglePilihSatu(id, checked) {
       if (checked) selectedItemIds.add(id);
@@ -997,18 +1392,11 @@
       const boxCustom = document.getElementById('boxCustomUkuran');
       const logoModeSelect = document.getElementById('printLogoMode');
 
-      if (val === 'CUSTOM') {
-        boxCustom.classList.remove('hidden');
-      } else {
-        boxCustom.classList.add('hidden');
-      }
+      if (val === 'CUSTOM') boxCustom.classList.remove('hidden');
+      else boxCustom.classList.add('hidden');
 
-      // Otomatis sarankan Logo Utuh di Samping untuk 8x3 cm, dan Logo di Tengah QR untuk 5x5 / 10x10
-      if (val === '8x3') {
-        logoModeSelect.value = 'SIDE';
-      } else if (val === '5x5' || val === '10x10') {
-        logoModeSelect.value = 'CENTER';
-      }
+      if (val === '8x3') logoModeSelect.value = 'SIDE';
+      else if (val === '5x5' || val === '10x10') logoModeSelect.value = 'CENTER';
 
       renderGridCetakA4();
     }
@@ -1031,7 +1419,7 @@
 
     function bukaCetakA4Terpilih() {
       if (selectedItemIds.size === 0) {
-        alert('Centang minimal satu barang pada tabel terlebih dahulu, atau klik tombol "Cetak Semua QR (A4)".');
+        alert('Centang minimal satu barang pada tabel terlebih dahulu, atau klik tombol "Semua QR (A4)".');
         return;
       }
       itemsToPrintA4 = allInventaris.filter(i => selectedItemIds.has(i.id));
@@ -1052,7 +1440,7 @@
 
     function renderGridCetakA4() {
       const dim = getDimensiLabelCm();
-      const logoMode = document.getElementById('printLogoMode').value; // 'SIDE', 'CENTER', 'NONE'
+      const logoMode = document.getElementById('printLogoMode').value;
       const grid = document.getElementById('gridLabelA4');
       grid.innerHTML = '';
 
@@ -1060,10 +1448,7 @@
       const savedLogo = localStorage.getItem(prefix + '_logo') || localStorage.getItem('sima_custom_logo');
       const headerTitle = document.getElementById('sidebarTitle').textContent;
 
-      // Deteksi apakah label melebar (horizontal seperti 8x3 cm) atau kotak/vertikal (5x5, 10x10)
       const isHorizontal = dim.w >= dim.h * 1.4;
-
-      // Hitung ukuran QR piksel proporsional (1 cm ≈ 37.8 px)
       const minSideCm = Math.min(dim.w, dim.h);
       const qrPx = isHorizontal
         ? Math.max(54, Math.round((dim.h - 0.55) * 37.8))
@@ -1081,15 +1466,12 @@
           (isHorizontal ? 'flex-row items-center px-2 py-1 gap-2 text-left' : 'flex-col items-center justify-between p-1.5 text-center');
 
         const qrContainerId = `qr-a4-${idx}`;
-
-        // Opsi 1: Logo di tengah QR
         const centerLogoHtml = (logoMode === 'CENTER' && savedLogo)
           ? `<img src="${savedLogo}" style="width:${centerLogoPx}px; height:${centerLogoPx}px;"
                class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white p-0.5 rounded shadow-sm object-contain border border-slate-200">`
           : '';
 
         if (isHorizontal) {
-          // Opsi 2: Logo utuh di samping (kiri), QR di tengah, dan keterangan di kanan (ideal untuk 8 x 3 cm)
           const sideLogoBoxHtml = (logoMode === 'SIDE')
             ? `<div style="width:${sideLogoPx}px; height:${sideLogoPx}px;"
                  class="shrink-0 flex items-center justify-center border-r border-slate-300 pr-1.5">
@@ -1115,7 +1497,6 @@
             </div>
           `;
         } else {
-          // Tata Letak Kotak Persegi (mis. 5 x 5 cm atau 10 x 10 cm)
           const isLarge = dim.w >= 8;
           const sideHeaderLogo = (logoMode === 'SIDE' && savedLogo)
             ? `<img src="${savedLogo}" class="inline-block ${isLarge ? 'w-5 h-5' : 'w-3.5 h-3.5'} object-contain mr-1 align-middle">`

@@ -1,14 +1,16 @@
 // ==========================================
-// PEMINJAMAN, SCAN QR & RIWAYAT PENGGUNAAN
+// PEMINJAMAN, AUTO-SCAN QR & RIWAYAT PENGGUNAAN
 // ==========================================
 let allPeminjamanAktif = [];
 let html5QrInstance = null;
 let activeScannerMode = null; // 'PINJAM' atau 'KEMBALI'
+let isSedangMenyimpanPinjam = false;
 
 function isIdentitasPinjamLengkap() {
   const nama = (document.getElementById('namaPeminjam')?.value || '').trim();
+  const noHp = (document.getElementById('noHpPeminjam')?.value || '').trim();
   const keperluan = (document.getElementById('keperluanPinjam')?.value || '').trim();
-  return nama.length > 0 && keperluan.length > 0;
+  return nama.length > 0 && noHp.length > 0 && keperluan.length > 0;
 }
 
 function cekKelengkapanIdentitasPinjam() {
@@ -24,11 +26,11 @@ function cekKelengkapanIdentitasPinjam() {
     box.className = 'bg-slate-50 border border-blue-200 rounded-xl p-3.5 space-y-2.5 transition';
     inputUsb.disabled = false;
     inputUsb.className = 'w-full px-3 py-2 rounded-lg border border-blue-300 bg-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500';
-    inputUsb.placeholder = 'Klik di sini lalu tembak stiker QR dengan Scanner USB...';
+    inputUsb.placeholder = 'Klik di sini lalu tembak QR (langsung tersimpan otomatis)...';
     btnKamera.disabled = false;
 
     if (activeScannerMode !== 'PINJAM' && statusEl.textContent.startsWith('🔒')) {
-      statusEl.textContent = '✅ Identitas terisi — silakan klik kolom di atas untuk Scanner USB atau tekan Buka Kamera HP.';
+      statusEl.textContent = '✅ Identitas lengkap — tembak QR dengan Scanner USB atau buka Kamera HP untuk otomatis mencatat peminjaman.';
       statusEl.className = 'text-[11px] font-semibold text-emerald-700';
     }
   } else {
@@ -36,9 +38,9 @@ function cekKelengkapanIdentitasPinjam() {
     inputUsb.disabled = true;
     inputUsb.value = '';
     inputUsb.className = 'w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-200 disabled:cursor-not-allowed font-mono text-xs';
-    inputUsb.placeholder = 'Isi Nama Peminjam & Keperluan di atas untuk mengaktifkan scan...';
+    inputUsb.placeholder = 'Lengkapi identitas di atas untuk mengaktifkan scan...';
     btnKamera.disabled = true;
-    statusEl.textContent = '🔒 Lengkapi Nama Peminjam dan Keperluan terlebih dahulu sebelum memindai QR.';
+    statusEl.textContent = '🔒 Isi Nama Peminjam, No. HP, dan Keperluan terlebih dahulu sebelum memindai QR.';
     statusEl.className = 'text-[11px] font-medium text-amber-700';
 
     if (activeScannerMode === 'PINJAM') {
@@ -80,7 +82,7 @@ async function hentikanKameraScanner() {
 
 async function toggleKameraScanner(mode) {
   if (mode === 'PINJAM' && !isIdentitasPinjamLengkap()) {
-    alert('Silakan isi Nama Peminjam dan Keperluan terlebih dahulu sebelum membuka kamera scan.');
+    alert('Silakan lengkapi Nama Peminjam, No. HP, dan Keperluan terlebih dahulu.');
     document.getElementById('namaPeminjam').focus();
     return;
   }
@@ -119,12 +121,12 @@ async function toggleKameraScanner(mode) {
       { fps: 10, qrbox: { width: 220, height: 220 } },
       async (decodedText) => {
         await hentikanKameraScanner();
-        prosesHasilScanQr(decodedText, mode);
+        await prosesHasilScanQr(decodedText, mode);
       },
       () => {}
     );
 
-    statusEl.textContent = '📷 Kamera aktif — arahkan ke stiker QR barang.';
+    statusEl.textContent = '📷 Kamera aktif — arahkan ke stiker QR barang (otomatis simpan saat terbaca).';
     statusEl.className = 'text-[11px] font-semibold text-blue-800';
   } catch (err) {
     await hentikanKameraScanner();
@@ -133,11 +135,11 @@ async function toggleKameraScanner(mode) {
   }
 }
 
-function handleScanUsbEnter(event, mode) {
+async function handleScanUsbEnter(event, mode) {
   if (event.key === 'Enter') {
     event.preventDefault();
     if (mode === 'PINJAM' && !isIdentitasPinjamLengkap()) {
-      alert('Isi Nama Peminjam dan Keperluan terlebih dahulu sebelum melakukan scan!');
+      alert('Lengkapi Nama Peminjam, No. HP, dan Keperluan terlebih dahulu!');
       document.getElementById('namaPeminjam').focus();
       return;
     }
@@ -145,12 +147,12 @@ function handleScanUsbEnter(event, mode) {
     const raw = input.value;
     input.value = '';
     if (raw.trim()) {
-      prosesHasilScanQr(raw, mode);
+      await prosesHasilScanQr(raw, mode);
     }
   }
 }
 
-function prosesHasilScanQr(rawText, mode) {
+async function prosesHasilScanQr(rawText, mode) {
   const kodeTerbaca = ekstrakKodeDariQr(rawText);
   if (!kodeTerbaca) return;
 
@@ -187,11 +189,92 @@ function prosesHasilScanQr(rawText, mode) {
 
     const select = document.getElementById('pilihBarangPinjam');
     select.value = barang.id;
-    statusEl.textContent = `✅ Barang siap dicatat: ${barang.kode_barang} — ${barang.nama_barang} (Stok Baik: ${barang.jumlah})`;
-    statusEl.className = 'text-[11px] font-bold text-emerald-700';
+    statusEl.textContent = `⏳ QR terbaca (${barang.kode_barang} — ${barang.nama_barang}). Menyimpan peminjaman otomatis...`;
+    statusEl.className = 'text-[11px] font-bold text-blue-800';
+
+    // Langsung simpan peminjaman secara otomatis
+    await eksekusiSimpanPeminjaman(barang.id, true);
   } else if (mode === 'KEMBALI') {
     tampilkanTransaksiKembaliUntukKode(kodeTerbaca);
   }
+}
+
+async function eksekusiSimpanPeminjaman(invId, dariAutoScan = false) {
+  if (isSedangMenyimpanPinjam) return;
+
+  const peminjam = document.getElementById('namaPeminjam').value.trim();
+  const noHp = document.getElementById('noHpPeminjam').value.trim();
+  const jmlPinjam = parseInt(document.getElementById('jumlahPinjam').value, 10) || 1;
+  const keperluanInput = document.getElementById('keperluanPinjam').value.trim();
+
+  if (!peminjam || !noHp || !keperluanInput) {
+    alert('Nama Peminjam, No. HP, dan Keperluan wajib diisi!');
+    return;
+  }
+
+  const barang = allInventaris.find(i => i.id === invId);
+  if (!barang || jmlPinjam < 1 || jmlPinjam > barang.jumlah) {
+    alert(`Jumlah pinjam (${jmlPinjam}) melebihi stok baik yang tersedia (${barang ? barang.jumlah : 0})!`);
+    return;
+  }
+
+  isSedangMenyimpanPinjam = true;
+  const statusEl = document.getElementById('statusScanPinjam');
+
+  try {
+    const keperluanLengkap = `[HP: ${noHp}] ${keperluanInput}`;
+
+    const { error } = await sb.from('peminjaman').insert([{
+      inventaris_id: barang.id,
+      kode_barang: barang.kode_barang,
+      nama_barang: barang.nama_barang,
+      unit_pemilik: barang.unit_pemilik,
+      nama_peminjam: peminjam,
+      jumlah_pinjam: jmlPinjam,
+      keperluan: keperluanLengkap,
+      dicatat_oleh: currentUser.id,
+      nama_pencatat: currentProfile.nama_lengkap
+    }]);
+
+    if (error) {
+      alert('Gagal mencatat peminjaman: ' + error.message);
+      if (statusEl) {
+        statusEl.textContent = '❌ Gagal menyimpan: ' + error.message;
+        statusEl.className = 'text-[11px] font-semibold text-red-600';
+      }
+      return;
+    }
+
+    await sb.from('inventaris').update({ jumlah: barang.jumlah - jmlPinjam }).eq('id', barang.id);
+    await catatKegiatan(
+      'Pinjam Barang',
+      `${peminjam} (HP: ${noHp}) meminjam ${jmlPinjam} unit ${barang.kode_barang} (${barang.nama_barang}) — ${keperluanInput}`
+    );
+
+    await closeModalPinjam();
+    await loadInventaris();
+    await loadPeminjaman();
+    await loadKegiatan();
+
+    if (dariAutoScan) {
+      alert(`✅ Peminjaman Otomatis Tercatat!\n\nBarang: ${barang.kode_barang} - ${barang.nama_barang} (${jmlPinjam} unit)\nPeminjam: ${peminjam} (${noHp})\nKeperluan: ${keperluanInput}`);
+    }
+  } finally {
+    isSedangMenyimpanPinjam = false;
+  }
+}
+
+function pisahNoHpDanKeperluan(rawKeperluan) {
+  if (!rawKeperluan) return { noHp: '-', teks: '-' };
+  const text = String(rawKeperluan).trim();
+  const match = text.match(/^\[HP:\s*(.*?)\]\s*(.*)$/i);
+  if (match) {
+    return {
+      noHp: match[1].trim() || '-',
+      teks: match[2].trim() || '-'
+    };
+  }
+  return { noHp: '-', teks: text || '-' };
 }
 
 function tampilkanTransaksiKembaliUntukKode(kodeTerbaca) {
@@ -213,20 +296,24 @@ function tampilkanTransaksiKembaliUntukKode(kodeTerbaca) {
   statusEl.textContent = `✅ Ditemukan ${daftarPinjam.length} transaksi aktif untuk kode ${kodeTerbaca}:`;
   statusEl.className = 'text-[11px] font-bold text-emerald-700';
 
-  box.innerHTML = daftarPinjam.map(p => `
-    <div class="p-3.5 rounded-xl border border-blue-200 bg-blue-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-      <div class="text-xs space-y-0.5">
-        <div class="font-mono font-bold text-blue-950">${p.kode_barang} — ${p.nama_barang}</div>
-        <div>Peminjam: <strong>${p.nama_peminjam}</strong> (${p.jumlah_pinjam} unit)</div>
-        <div class="text-slate-500">Keperluan: ${p.keperluan || '-'} • Pinjam: ${formatWaktu(p.tanggal_pinjam)}</div>
+  box.innerHTML = daftarPinjam.map(p => {
+    const { noHp, teks } = pisahNoHpDanKeperluan(p.keperluan);
+    return `
+      <div class="p-3.5 rounded-xl border border-blue-200 bg-blue-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="text-xs space-y-0.5">
+          <div class="font-mono font-bold text-blue-950">${p.kode_barang} — ${p.nama_barang}</div>
+          <div>Peminjam: <strong>${p.nama_peminjam}</strong> (${p.jumlah_pinjam} unit)</div>
+          <div class="text-slate-600">No. HP: <strong>${noHp}</strong> • Keperluan: ${teks}</div>
+          <div class="text-slate-500">Waktu Pinjam: ${formatWaktu(p.tanggal_pinjam)}</div>
+        </div>
+        <button type="button"
+          onclick="kembalikanBarang('${p.id}', '${p.inventaris_id}', ${p.jumlah_pinjam}, '${p.kode_barang}', '${p.nama_peminjam}', true)"
+          class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2 rounded-lg font-semibold shrink-0 shadow-sm">
+          ✓ Konfirmasi Kembali
+        </button>
       </div>
-      <button type="button"
-        onclick="kembalikanBarang('${p.id}', '${p.inventaris_id}', ${p.jumlah_pinjam}, '${p.kode_barang}', '${p.nama_peminjam}', true)"
-        class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3.5 py-2 rounded-lg font-semibold shrink-0 shadow-sm">
-        ✓ Konfirmasi Kembali
-      </button>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 async function loadPeminjaman() {
@@ -243,6 +330,7 @@ async function loadPeminjaman() {
 
   tbody.innerHTML = data.map(p => {
     const isDipinjam = p.status === 'Dipinjam';
+    const { noHp, teks } = pisahNoHpDanKeperluan(p.keperluan);
     return `
       <tr class="hover:bg-slate-50">
         <td class="p-4">
@@ -250,9 +338,12 @@ async function loadPeminjaman() {
           <div class="font-medium text-slate-800">${p.nama_barang}</div>
         </td>
         <td class="p-4 text-xs font-semibold">${p.unit_pemilik}</td>
-        <td class="p-4 font-medium">${p.nama_peminjam}</td>
+        <td class="p-4">
+          <div class="font-medium text-slate-800">${p.nama_peminjam}</div>
+          <div class="text-xs text-slate-500">HP: ${noHp}</div>
+        </td>
         <td class="p-4 font-bold">${p.jumlah_pinjam}</td>
-        <td class="p-4 text-xs text-slate-600">${p.keperluan || '-'}</td>
+        <td class="p-4 text-xs text-slate-600">${teks}</td>
         <td class="p-4 text-xs text-slate-500">${formatWaktu(p.tanggal_pinjam)}</td>
         <td class="p-4 text-xs text-slate-500">${formatWaktu(p.tanggal_kembali)}</td>
         <td class="p-4">
@@ -322,40 +413,7 @@ async function closeModalScanKembali() {
 document.getElementById('formPinjam').addEventListener('submit', async (e) => {
   e.preventDefault();
   const invId = document.getElementById('pilihBarangPinjam').value;
-  const peminjam = document.getElementById('namaPeminjam').value.trim();
-  const jmlPinjam = parseInt(document.getElementById('jumlahPinjam').value);
-  const keperluan = document.getElementById('keperluanPinjam').value.trim();
-
-  const barang = allInventaris.find(i => i.id === invId);
-  if (!barang || jmlPinjam > barang.jumlah) {
-    alert('Jumlah pinjam melebihi stok yang tersedia!');
-    return;
-  }
-
-  const { error } = await sb.from('peminjaman').insert([{
-    inventaris_id: barang.id,
-    kode_barang: barang.kode_barang,
-    nama_barang: barang.nama_barang,
-    unit_pemilik: barang.unit_pemilik,
-    nama_peminjam: peminjam,
-    jumlah_pinjam: jmlPinjam,
-    keperluan: keperluan,
-    dicatat_oleh: currentUser.id,
-    nama_pencatat: currentProfile.nama_lengkap
-  }]);
-
-  if (error) {
-    alert('Gagal mencatat peminjaman: ' + error.message);
-    return;
-  }
-
-  await sb.from('inventaris').update({ jumlah: barang.jumlah - jmlPinjam }).eq('id', barang.id);
-  await catatKegiatan('Pinjam Barang', `${peminjam} meminjam ${jmlPinjam} unit ${barang.kode_barang} (${barang.nama_barang})`);
-
-  await closeModalPinjam();
-  await loadInventaris();
-  await loadPeminjaman();
-  await loadKegiatan();
+  await eksekusiSimpanPeminjaman(invId, false);
 });
 
 async function kembalikanBarang(pinjamId, invId, jmlKembali, kode, peminjam, dariModalScan = false) {

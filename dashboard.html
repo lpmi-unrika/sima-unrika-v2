@@ -817,14 +817,29 @@
       </div>
 
       <form id="formPinjam" class="space-y-4">
-        <!-- LANGKAH 1: IDENTITAS PEMINJAM -->
+        <!-- LANGKAH 1: IDENTITAS & NO. HP PEMINJAM -->
         <div class="bg-blue-50/70 border border-blue-200 rounded-xl p-3.5 space-y-3">
           <div class="text-xs font-bold text-blue-950 uppercase tracking-wide">Langkah 1: Isi Identitas Peminjam</div>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div class="sm:col-span-2">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
               <label class="block text-xs font-semibold text-slate-700 mb-1">Nama Peminjam <span class="text-red-600">*</span></label>
               <input type="text" id="namaPeminjam" required oninput="cekKelengkapanIdentitasPinjam()"
-                placeholder="Ketik nama lengkap peminjam"
+                placeholder="Nama lengkap peminjam"
+                class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">No. HP / WhatsApp <span class="text-red-600">*</span></label>
+              <input type="tel" id="noHpPeminjam" required oninput="cekKelengkapanIdentitasPinjam()"
+                placeholder="Contoh: 081234567890"
+                class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Keperluan / Lokasi Pemakaian <span class="text-red-600">*</span></label>
+              <input type="text" id="keperluanPinjam" required oninput="cekKelengkapanIdentitasPinjam()"
+                placeholder="Contoh: Rapat / Kegiatan Aula"
                 class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
             <div>
@@ -833,18 +848,12 @@
                 class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm">
             </div>
           </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">Keperluan / Lokasi Pemakaian <span class="text-red-600">*</span></label>
-            <input type="text" id="keperluanPinjam" required oninput="cekKelengkapanIdentitasPinjam()"
-              placeholder="Contoh: Rapat / Kegiatan Aula"
-              class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-          </div>
         </div>
 
-        <!-- LANGKAH 2: SCAN QR BARANG (TERKUNCI SEBELUM IDENTITAS TERISI) -->
+        <!-- LANGKAH 2: SCAN QR (OTOMATIS SIMPAN SAAT TERPINDAI) -->
         <div id="boxScanPinjam" class="bg-slate-100 border border-slate-200 rounded-xl p-3.5 space-y-2.5 opacity-75 transition">
           <div class="flex items-center justify-between gap-2">
-            <label class="text-xs font-bold text-slate-700">Langkah 2: Scan QR Barang (USB / Kamera HP)</label>
+            <label class="text-xs font-bold text-slate-700">Langkah 2: Scan QR (Otomatis Simpan)</label>
             <button type="button" id="btnToggleKameraPinjam" disabled onclick="toggleKameraScanner('PINJAM')"
               class="bg-blue-900 hover:bg-blue-800 disabled:bg-slate-400 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition">
               📷 Buka Kamera HP
@@ -852,26 +861,35 @@
           </div>
 
           <input type="text" id="inputScanUsbPinjam" disabled onkeydown="handleScanUsbEnter(event, 'PINJAM')"
-            placeholder="Isi Nama Peminjam & Keperluan di atas untuk mengaktifkan scan..."
+            placeholder="Lengkapi identitas di atas untuk mengaktifkan scan..."
             class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-200 disabled:cursor-not-allowed font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
 
           <div id="readerKameraPinjam" class="hidden rounded-lg overflow-hidden border border-slate-300 bg-black"></div>
           <p id="statusScanPinjam" class="text-[11px] font-medium text-amber-700">
-            🔒 Lengkapi Nama Peminjam dan Keperluan terlebih dahulu sebelum memindai QR.
+            🔒 Isi Nama Peminjam, No. HP, dan Keperluan terlebih dahulu sebelum memindai QR.
           </p>
         </div>
 
-        <!-- PILIHAN BARANG HASIL SCAN / MANUAL -->
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Barang Terpilih (Otomatis dari Scan atau Pilih Manual)</label>
-          <select id="pilihBarangPinjam" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white"></select>
-        </div>
+        <!-- OPSI MANUAL JIKA TIDAK MENGGUNAKAN SCAN -->
+        <details class="text-xs text-slate-600 border border-slate-200 rounded-xl p-3 bg-slate-50/50">
+          <summary class="cursor-pointer font-semibold text-slate-700">Atau Pilih Barang Secara Manual (Tanpa Scan QR)</summary>
+          <div class="mt-3 space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Barang Kondisi Baik Tersedia</label>
+              <select id="pilihBarangPinjam" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white"></select>
+            </div>
+            <div class="flex justify-end">
+              <button type="submit" id="btnSimpanPinjamManual"
+                class="px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white">
+                Catat Peminjaman Manual
+              </button>
+            </div>
+          </div>
+        </details>
 
-        <div class="flex justify-end gap-3 pt-4 border-t">
+        <div class="flex justify-end pt-2 border-t">
           <button type="button" onclick="closeModalPinjam()"
-            class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100">Batal</button>
-          <button type="submit"
-            class="px-5 py-2 rounded-lg text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white">Catat Peminjaman</button>
+            class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100">Tutup</button>
         </div>
       </form>
     </div>

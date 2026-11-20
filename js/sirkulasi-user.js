@@ -5,6 +5,48 @@ let allPeminjamanAktif = [];
 let html5QrInstance = null;
 let activeScannerMode = null; // 'PINJAM' atau 'KEMBALI'
 
+function isIdentitasPinjamLengkap() {
+  const nama = (document.getElementById('namaPeminjam')?.value || '').trim();
+  const keperluan = (document.getElementById('keperluanPinjam')?.value || '').trim();
+  return nama.length > 0 && keperluan.length > 0;
+}
+
+function cekKelengkapanIdentitasPinjam() {
+  const lengkap = isIdentitasPinjamLengkap();
+  const box = document.getElementById('boxScanPinjam');
+  const inputUsb = document.getElementById('inputScanUsbPinjam');
+  const btnKamera = document.getElementById('btnToggleKameraPinjam');
+  const statusEl = document.getElementById('statusScanPinjam');
+
+  if (!box || !inputUsb || !btnKamera || !statusEl) return;
+
+  if (lengkap) {
+    box.className = 'bg-slate-50 border border-blue-200 rounded-xl p-3.5 space-y-2.5 transition';
+    inputUsb.disabled = false;
+    inputUsb.className = 'w-full px-3 py-2 rounded-lg border border-blue-300 bg-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500';
+    inputUsb.placeholder = 'Klik di sini lalu tembak stiker QR dengan Scanner USB...';
+    btnKamera.disabled = false;
+
+    if (activeScannerMode !== 'PINJAM' && statusEl.textContent.startsWith('🔒')) {
+      statusEl.textContent = '✅ Identitas terisi — silakan klik kolom di atas untuk Scanner USB atau tekan Buka Kamera HP.';
+      statusEl.className = 'text-[11px] font-semibold text-emerald-700';
+    }
+  } else {
+    box.className = 'bg-slate-100 border border-slate-200 rounded-xl p-3.5 space-y-2.5 opacity-75 transition';
+    inputUsb.disabled = true;
+    inputUsb.value = '';
+    inputUsb.className = 'w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-200 disabled:cursor-not-allowed font-mono text-xs';
+    inputUsb.placeholder = 'Isi Nama Peminjam & Keperluan di atas untuk mengaktifkan scan...';
+    btnKamera.disabled = true;
+    statusEl.textContent = '🔒 Lengkapi Nama Peminjam dan Keperluan terlebih dahulu sebelum memindai QR.';
+    statusEl.className = 'text-[11px] font-medium text-amber-700';
+
+    if (activeScannerMode === 'PINJAM') {
+      hentikanKameraScanner();
+    }
+  }
+}
+
 function ekstrakKodeDariQr(rawText) {
   if (!rawText) return '';
   const text = String(rawText).trim();
@@ -37,6 +79,12 @@ async function hentikanKameraScanner() {
 }
 
 async function toggleKameraScanner(mode) {
+  if (mode === 'PINJAM' && !isIdentitasPinjamLengkap()) {
+    alert('Silakan isi Nama Peminjam dan Keperluan terlebih dahulu sebelum membuka kamera scan.');
+    document.getElementById('namaPeminjam').focus();
+    return;
+  }
+
   if (activeScannerMode === mode) {
     await hentikanKameraScanner();
     return;
@@ -88,6 +136,11 @@ async function toggleKameraScanner(mode) {
 function handleScanUsbEnter(event, mode) {
   if (event.key === 'Enter') {
     event.preventDefault();
+    if (mode === 'PINJAM' && !isIdentitasPinjamLengkap()) {
+      alert('Isi Nama Peminjam dan Keperluan terlebih dahulu sebelum melakukan scan!');
+      document.getElementById('namaPeminjam').focus();
+      return;
+    }
     const input = event.target;
     const raw = input.value;
     input.value = '';
@@ -134,9 +187,8 @@ function prosesHasilScanQr(rawText, mode) {
 
     const select = document.getElementById('pilihBarangPinjam');
     select.value = barang.id;
-    statusEl.textContent = `✅ Terdeteksi: ${barang.kode_barang} — ${barang.nama_barang} (Stok Baik: ${barang.jumlah})`;
+    statusEl.textContent = `✅ Barang siap dicatat: ${barang.kode_barang} — ${barang.nama_barang} (Stok Baik: ${barang.jumlah})`;
     statusEl.className = 'text-[11px] font-bold text-emerald-700';
-    document.getElementById('namaPeminjam').focus();
   } else if (mode === 'KEMBALI') {
     tampilkanTransaksiKembaliUntukKode(kodeTerbaca);
   }
@@ -236,13 +288,12 @@ function openModalPinjam() {
     `<option value="${i.id}">${i.kode_barang} - ${i.nama_barang} (Stok Baik: ${i.jumlah})</option>`
   ).join('');
   document.getElementById('formPinjam').reset();
-  document.getElementById('statusScanPinjam').textContent = 'Siap memindai stiker QR atau pilih manual di bawah.';
-  document.getElementById('statusScanPinjam').className = 'text-[11px] text-slate-500';
+  cekKelengkapanIdentitasPinjam();
   document.getElementById('modalPinjam').classList.remove('hidden');
 
   setTimeout(() => {
-    const usbInput = document.getElementById('inputScanUsbPinjam');
-    if (usbInput) usbInput.focus();
+    const namaInput = document.getElementById('namaPeminjam');
+    if (namaInput) namaInput.focus();
   }, 150);
 }
 

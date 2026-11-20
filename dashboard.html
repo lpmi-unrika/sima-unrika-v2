@@ -319,7 +319,7 @@
         <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-5">
           <div>
             <h3 class="font-bold text-slate-800">2. Format Nomor Inventaris Otomatis</h3>
-            <p class="text-xs text-slate-500 mt-0.5">Format standar: <code>[KATEGORI]-[UNIT/LOKASI]-[TAHUN]-[URUT]</code></p>
+            <p class="text-xs text-slate-500 mt-0.5">Nomor urut otomatis dihitung berdasarkan <strong>Kode Kategori</strong> pada unit pemilik (Format: <code>[KATEGORI]-[LOKASI/UNIT]-[TAHUN]-[URUT]</code>)</p>
           </div>
 
           <div class="grid grid-cols-2 gap-4">
@@ -341,7 +341,7 @@
 
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">Kode Lokasi / Unit Default</label>
-            <input type="text" id="settingKodeLokasi" maxlength="4" oninput="updateContohNomor()" placeholder="Mis: LPMI / ADM / GDG / BTM"
+            <input type="text" id="settingKodeLokasi" maxlength="4" oninput="updateContohNomor()" placeholder="Mis: LPMI / LMR / ADM / GDG"
               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm uppercase">
             <p class="text-[11px] text-slate-400 mt-1">Kosongkan untuk otomatis mengikuti unit pemilik barang (LPMI / REKT).</p>
           </div>
@@ -428,13 +428,13 @@
               <option value="KD|Kendaraan/Operasional">KD - Kendaraan / Operasional</option>
               <option value="CUSTOM">Kode Kustom Lainnya...</option>
             </select>
-            <input type="text" id="inputKodeKategoriCustom" maxlength="3" oninput="generateKodeOtomatis()" placeholder="Kode 2-3 huruf (mis: PR)"
+            <input type="text" id="inputKodeKategoriCustom" maxlength="3" oninput="generateKodeOtomatis(true)" placeholder="Kode 2-3 huruf (mis: PR)"
               class="hidden mt-1.5 w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs uppercase">
           </div>
 
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">Unit Pemilik</label>
-            <select id="unitPemilik" onchange="generateKodeOtomatis()" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white">
+            <select id="unitPemilik" onchange="generateKodeOtomatis(true)" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white">
               <option value="LPMI">LPMI</option>
               <option value="Rektorat">Rektorat</option>
             </select>
@@ -442,20 +442,20 @@
 
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">Kode Lokasi di Nomor (Opsional)</label>
-            <input type="text" id="kodeLokasiBarang" maxlength="4" oninput="generateKodeOtomatis()" placeholder="Mis: ADM / GDG / BTM"
+            <input type="text" id="kodeLokasiBarang" maxlength="4" oninput="generateKodeOtomatis(false)" placeholder="Mis: LMR / ADM / GDG"
               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm uppercase">
           </div>
         </div>
 
         <div>
           <div class="flex items-center justify-between mb-1">
-            <label class="block text-xs font-semibold text-slate-600">Nomor Inventaris Terstruktur (Otomatis Real-Time)</label>
+            <label class="block text-xs font-semibold text-slate-600">Nomor Inventaris (Urut Berdasarkan Kategori)</label>
             <span id="statusSyncKode" class="text-[11px] font-semibold text-emerald-700">✓ Tersinkron dengan database</span>
           </div>
           <div class="flex gap-2">
             <input type="text" id="kodeBarang" required
               class="w-full px-3 py-2 rounded-lg border border-blue-300 bg-blue-50 font-mono text-sm font-bold text-blue-950">
-            <button type="button" onclick="generateKodeOtomatis(true)" title="Sinkronkan & Buat Ulang Nomor Urut Terbaru"
+            <button type="button" onclick="generateKodeOtomatis(true)" title="Sinkronkan & Buat Ulang Nomor Urut Kategori"
               class="px-3 py-2 bg-slate-200 hover:bg-slate-300 rounded-lg text-xs font-semibold shrink-0">↻ Urutkan</button>
           </div>
         </div>
@@ -494,7 +494,7 @@
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">Tanggal Masuk</label>
-            <input type="date" id="tanggalMasuk" required onchange="generateKodeOtomatis()"
+            <input type="date" id="tanggalMasuk" required onchange="generateKodeOtomatis(true)"
               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
           </div>
         </div>
@@ -521,7 +521,7 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">Lokasi Penyimpanan</label>
-            <input type="text" id="lokasiPenyimpananBarang" placeholder="Contoh: Ruang LPMI Lt. 2 / Lemari A"
+            <input type="text" id="lokasiPenyimpananBarang" placeholder="Contoh: Ruang LPMI Lt. 2 / Lemari Besi"
               class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
           </div>
           <div>
@@ -551,7 +551,7 @@
         <button type="button" onclick="document.getElementById('modalPecahKondisi').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
       </div>
       <p class="text-xs text-slate-500 mb-4">
-        Pisahkan sebagian jumlah barang ke status kondisi berbeda dan terbitkan kode inventaris baru secara otomatis.
+        Pisahkan sebagian jumlah barang ke status kondisi berbeda dan terbitkan kode inventaris baru secara otomatis mengikuti urutan kategorinya.
       </p>
 
       <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-xs space-y-1">
@@ -1240,7 +1240,7 @@
     }
 
     // ==========================================
-    // GENERATOR NOMOR INVENTARIS REAL-TIME (RESPONSIF & SINKRON SUPABASE)
+    // GENERATOR NOMOR INVENTARIS BERDASARKAN KODE KATEGORI
     // ==========================================
     function handleKategoriChange() {
       const val = document.getElementById('pilihKodeKategori').value;
@@ -1259,7 +1259,7 @@
     async function generateKodeOtomatis(forceSyncDb = false) {
       const statusEl = document.getElementById('statusSyncKode');
       if (statusEl) {
-        statusEl.textContent = '⏳ Menghitung nomor urut...';
+        statusEl.textContent = '⏳ Menghitung nomor urut kategori...';
         statusEl.className = 'text-[11px] font-semibold text-amber-600';
       }
 
@@ -1273,45 +1273,51 @@
       if (katSelect === 'CUSTOM') {
         kodeKat = document.getElementById('inputKodeKategoriCustom').value.trim().toUpperCase() || 'INV';
       } else {
-        kodeKat = katSelect.split('|')[0];
+        kodeKat = katSelect.split('|')[0].toUpperCase();
       }
 
       const lokasiInput = document.getElementById('kodeLokasiBarang').value.trim().toUpperCase();
-      const unitVal = document.getElementById('unitPemilik').value.toUpperCase();
-      const kodeUnitDefault = unitVal === 'REKTORAT' ? 'REKT' : unitVal;
+      const unitSelectVal = document.getElementById('unitPemilik').value;
+      const unitUpper = unitSelectVal.toUpperCase();
+      const kodeUnitDefault = unitUpper === 'REKTORAT' ? 'REKT' : unitUpper;
       const kodeLokasi = lokasiInput || defaultLokasi || kodeUnitDefault;
 
       const tglMasukVal = document.getElementById('tanggalMasuk').value;
       const tahunFull = tglMasukVal ? tglMasukVal.split('-')[0] : String(new Date().getFullYear());
       const kodeTahun = fmtTahun === '2' ? tahunFull.slice(-2) : tahunFull;
 
-      const prefixPencarian = `${kodeKat}-${kodeLokasi}-${kodeTahun}-`;
+      // Ambil seluruh kode pada unit pemilik yang sama (mengabaikan perbedaan kode lokasi)
+      let daftarKodeUnit = allInventaris
+        .filter(i => (i.unit_pemilik || '').toUpperCase() === unitUpper)
+        .map(i => i.kode_barang);
 
-      // Ambil daftar kode terbaru langsung dari Supabase agar tidak pernah tertinggal di angka 1
-      let daftarKode = allInventaris.map(i => i.kode_barang);
       if (forceSyncDb) {
         const { data: latestCodes } = await sb
           .from('inventaris')
           .select('kode_barang')
-          .ilike('kode_barang', `${prefixPencarian}%`);
+          .eq('unit_pemilik', unitSelectVal)
+          .ilike('kode_barang', `${kodeKat}-%`);
         if (latestCodes && latestCodes.length > 0) {
-          daftarKode = [...new Set([...daftarKode, ...latestCodes.map(r => r.kode_barang)])];
+          daftarKodeUnit = [...new Set([...daftarKodeUnit, ...latestCodes.map(r => r.kode_barang)])];
         }
       }
 
-      const existingSamePrefix = daftarKode.filter(k => k && k.toUpperCase().startsWith(prefixPencarian));
+      // Hitung nomor urut tertinggi khusus untuk KODE KATEGORI yang dipilih (misal semua "EL-...")
+      const prefixKategori = `${kodeKat}-`;
       let maxUrut = 0;
-      existingSamePrefix.forEach(kode => {
-        const parts = kode.split('-');
-        const num = parseInt(parts[parts.length - 1], 10);
-        if (!isNaN(num) && num > maxUrut) maxUrut = num;
+      daftarKodeUnit.forEach(kode => {
+        if (kode && kode.toUpperCase().startsWith(prefixKategori)) {
+          const parts = kode.split('-');
+          const num = parseInt(parts[parts.length - 1], 10);
+          if (!isNaN(num) && num > maxUrut) maxUrut = num;
+        }
       });
 
       const nomorUrut = String(maxUrut + 1).padStart(digitUrut, '0');
-      document.getElementById('kodeBarang').value = `${prefixPencarian}${nomorUrut}`;
+      document.getElementById('kodeBarang').value = `${kodeKat}-${kodeLokasi}-${kodeTahun}-${nomorUrut}`;
 
       if (statusEl) {
-        statusEl.textContent = `✓ Nomor urut ke-${maxUrut + 1} siap`;
+        statusEl.textContent = `✓ Kategori ${kodeKat}: Urut ke-${maxUrut + 1} siap`;
         statusEl.className = 'text-[11px] font-semibold text-emerald-700';
       }
     }
@@ -1354,20 +1360,21 @@
         : 'text-base font-extrabold text-slate-900';
     }
 
-    function buatKodeBerikutnyaDariPrefix(prefixKode, daftarKodeTerpakai) {
+    function buatKodeBerikutnyaDariKategori(kodeKat, prefixLengkapAsal, daftarKodeTerpakai) {
       const prefixCfg = getStoragePrefix();
       const digitUrut = parseInt(localStorage.getItem(prefixCfg + '_digit_urut') || '3');
+      const prefixKatSearch = `${kodeKat.toUpperCase()}-`;
       let maxUrut = 0;
 
       daftarKodeTerpakai.forEach(kode => {
-        if (kode && kode.toUpperCase().startsWith(prefixKode.toUpperCase())) {
+        if (kode && kode.toUpperCase().startsWith(prefixKatSearch)) {
           const parts = kode.split('-');
           const num = parseInt(parts[parts.length - 1], 10);
           if (!isNaN(num) && num > maxUrut) maxUrut = num;
         }
       });
 
-      const nextKode = `${prefixKode}${String(maxUrut + 1).padStart(digitUrut, '0')}`;
+      const nextKode = `${prefixLengkapAsal}${String(maxUrut + 1).padStart(digitUrut, '0')}`;
       daftarKodeTerpakai.push(nextKode);
       return nextKode;
     }
@@ -1396,11 +1403,15 @@
       btn.textContent = 'Memproses...';
 
       const partsAsal = itemSedangDipecah.kode_barang.split('-');
-      const prefixKode = partsAsal.length > 1
+      const kodeKatAsal = partsAsal[0] || 'INV';
+      const prefixLengkapAsal = partsAsal.length > 1
         ? partsAsal.slice(0, -1).join('-') + '-'
         : itemSedangDipecah.kode_barang + '-';
 
-      const { data: latestCodes } = await sb.from('inventaris').select('kode_barang');
+      const { data: latestCodes } = await sb
+        .from('inventaris')
+        .select('kode_barang')
+        .eq('unit_pemilik', itemSedangDipecah.unit_pemilik);
       const daftarKodeTerpakai = latestCodes ? latestCodes.map(r => r.kode_barang) : allInventaris.map(i => i.kode_barang);
       const barisBaru = [];
 
@@ -1418,7 +1429,7 @@
 
       daftarPecahan.forEach(p => {
         if (p.jumlah > 0) {
-          const kodeBaru = buatKodeBerikutnyaDariPrefix(prefixKode, daftarKodeTerpakai);
+          const kodeBaru = buatKodeBerikutnyaDariKategori(kodeKatAsal, prefixLengkapAsal, daftarKodeTerpakai);
           barisBaru.push({
             kode_barang: kodeBaru,
             nama_barang: itemSedangDipecah.nama_barang,
